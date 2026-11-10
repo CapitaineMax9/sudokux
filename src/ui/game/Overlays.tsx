@@ -2,7 +2,7 @@
  * Effets passagers affichés par-dessus la partie : annonces, alerte
  * d'attaque, flash de couleur, particules et compte à rebours de départ.
  */
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -198,6 +198,10 @@ export const AttackWarning = memo(function AttackWarning() {
 /* Flash de couleur plein écran                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Retour sensoriel des événements de la partie : un flash de couleur sur
+ * tout l'écran pour les moments forts, et les vibrations correspondantes.
+ */
 export const FlashOverlay = memo(function FlashOverlay() {
   const [color, setColor] = useState<string>(C.red);
   const opacity = useSharedValue(0);
@@ -345,7 +349,7 @@ function CountStep({ text, color }: { text: string; color: string }) {
 interface StartCountdownProps {
   onDone: () => void;
   /** Contenu affiché au-dessus du décompte (par ex. l'affiche du duel). */
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 export function StartCountdown({ onDone, children }: StartCountdownProps) {

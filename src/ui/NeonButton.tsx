@@ -20,6 +20,8 @@ export interface NeonButtonProps {
   disabled?: boolean;
   /** Petite étiquette (par ex. « NOUVEAU »). */
   badge?: string;
+  /** Pour les boutons étroits (deux par ligne) : libellé et icône resserrés. */
+  compact?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -36,6 +38,7 @@ export function NeonButton({
   icon,
   disabled = false,
   badge,
+  compact = false,
   style,
   testID,
 }: NeonButtonProps) {
@@ -78,15 +81,15 @@ export function NeonButton({
         ]}>
         {!solid && !ghost ? <View style={[styles.accent, { backgroundColor: tint }]} /> : null}
         {icon ? (
-          <View style={styles.icon}>
-            <Icon name={icon} size={size === 'lg' ? 26 : 20} color={foreground} />
+          <View style={compact ? styles.iconCompact : styles.icon}>
+            <Icon name={icon} size={size === 'lg' ? 26 : compact ? 18 : 20} color={foreground} />
           </View>
         ) : null}
         <View style={[styles.labels, icon ? null : styles.centered]}>
           <Txt
             variant={size === 'lg' ? 'heading' : 'title'}
             color={foreground}
-            size={size === 'sm' ? 12 : undefined}
+            size={size === 'sm' ? 12 : compact ? 11.5 : undefined}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.7}>
@@ -130,6 +133,9 @@ const styles = StyleSheet.create({
   icon: {
     marginRight: 14,
     marginLeft: 4,
+  },
+  iconCompact: {
+    marginRight: 8,
   },
   labels: {
     flex: 1,

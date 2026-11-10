@@ -83,6 +83,7 @@ export default function HomeScreen() {
             icon="bolt"
             color={C.yellow}
             badge={freshPowers > 0 ? t('common.new') : undefined}
+            compact
             onPress={() => router.push('/powers')}
             style={styles.half}
           />
@@ -91,6 +92,7 @@ export default function HomeScreen() {
             label={t('home.settings')}
             icon="settings"
             color={C.textDim}
+            compact
             onPress={() => router.push('/settings')}
             style={styles.half}
           />

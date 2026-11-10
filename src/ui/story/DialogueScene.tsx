@@ -77,7 +77,11 @@ export function DialogueScene({ lines, onDone }: DialogueSceneProps) {
   const color = character.color;
 
   return (
-    <Pressable style={styles.root} onPress={advance} testID="dialogue" accessibilityRole="button">
+    <Pressable
+      style={styles.root}
+      onPress={advance}
+      testID="dialogue"
+      accessibilityLabel={t('common.tapToContinue')}>
       <View style={styles.header}>
         <Txt variant="num" color={C.textMuted} size={14}>
           {index + 1} / {lines.length}

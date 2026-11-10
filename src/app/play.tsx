@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AppState,
   BackHandler,
@@ -171,6 +171,8 @@ export default function PlayScreen() {
   const [phase, setPhase] = useState<Phase>('loading');
   const [result, setResult] = useState<Outcome | null>(null);
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
+  /** Numéro de la dernière partie lancée par cet écran (voir le nettoyage plus bas). */
+  const ownedRun = useRef(-1);
 
   useStayAwake();
 
@@ -191,6 +193,7 @@ export default function PlayScreen() {
         return;
       }
       useMatchStore.getState().start(next);
+      ownedRun.current = useMatchStore.getState().runId;
       setResult(null);
       if (withStory && next.level) setPhase(next.level.intro.length > 0 ? 'intro' : 'briefing');
       else setPhase('countdown');
@@ -204,7 +207,15 @@ export default function PlayScreen() {
     return () => clearTimeout(timer);
   }, [begin]);
 
-  useEffect(() => () => useMatchStore.getState().clear(), []);
+  // En quittant l'écran, on libère la partie — sauf si un autre écran de jeu
+  // en a déjà lancé une nouvelle entre-temps (transition entre deux missions).
+  useEffect(
+    () => () => {
+      const store = useMatchStore.getState();
+      if (store.runId === ownedRun.current) store.clear();
+    },
+    [],
+  );
 
   // L'horloge de la partie.
   useEffect(() => {
@@ -279,13 +290,14 @@ export default function PlayScreen() {
     return () => subscription.remove();
   }, [phase, pause, resume, exit]);
 
-  // L'appli passe en arrière-plan : pause automatique.
+  // L'appli passe en arrière-plan en pleine partie : pause automatique.
   useEffect(() => {
+    if (phase !== 'playing') return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') dispatchMatch({ type: 'pause' });
     });
     return () => subscription.remove();
-  }, []);
+  }, [phase]);
 
   const onBoardArea = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -371,7 +383,8 @@ export default function PlayScreen() {
           xpAfter={result.xpAfter}
           onNext={
             canAdvance && upcoming
-              ? () => router.replace({ pathname: '/play', params: { kind: 'story', level: upcoming } })
+              ? // On reste sur le même écran : changer le paramètre relance `begin`.
+                () => router.setParams({ level: upcoming })
               : undefined
           }
           onRetry={restart}

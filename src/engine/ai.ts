@@ -9,7 +9,6 @@
 import { CELLS, logicSolve } from './sudoku';
 import { POWERS, RULES, isAttack, type PowerId } from './powers';
 import {
-  findEffect,
   hasEffect,
   isCellHidden,
   placeCorrect,
@@ -69,12 +68,12 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
     castPower(state, 'opponent', 'purge', events);
   }
 
-  // Gelé ou sonné : il ne peut rien poser.
-  const frozen = findEffect(me, 'freeze');
-  if (frozen) ai.nextMoveAt = Math.max(ai.nextMoveAt, frozen.until + 150);
-  if (me.stunnedUntil > now) ai.nextMoveAt = Math.max(ai.nextMoveAt, me.stunnedUntil);
-
-  if (now >= ai.nextMoveAt) {
+  // Gelé ou sonné : il ne peut rien poser. On repousse son prochain coup
+  // tic après tic (et non d'un bloc), pour qu'une purge le libère aussitôt.
+  const blocked = hasEffect(me, 'freeze') || me.stunnedUntil > now;
+  if (blocked) {
+    ai.nextMoveAt = Math.max(ai.nextMoveAt, now + 150);
+  } else if (now >= ai.nextMoveAt) {
     const glitched = hasEffect(me, 'glitch');
     let interval = randBetween(state, bot.cellMs[0], bot.cellMs[1]);
     if (bot.pace) {

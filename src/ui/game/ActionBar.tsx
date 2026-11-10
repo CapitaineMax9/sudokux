@@ -105,8 +105,15 @@ const PowerButton = memo(function PowerButton({ power, charge }: PowerButtonProp
         <Animated.View pointerEvents="none" style={[FILL, { backgroundColor: color }, halo]} />
       ) : null}
       <Icon name={power} size={24} color={tint} />
-      <Txt variant="label" color={tint} size={7.5} numberOfLines={1} style={styles.powerName}>
-        {t(`power.${power}.name`)}
+      <Txt
+        variant="small"
+        color={tint}
+        size={9.5}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        style={styles.powerName}>
+        {t(`power.${power}.name`).toUpperCase()}
       </Txt>
       <View style={[styles.cost, { backgroundColor: ready ? color : alpha(C.textMuted, 0.35) }]}>
         <Txt variant="num" color={ready ? C.bg : C.textDim} size={11} style={styles.costText}>
@@ -202,7 +209,9 @@ const styles = StyleSheet.create({
   },
   powerName: {
     marginTop: 1,
-    letterSpacing: 0.6,
+    letterSpacing: 0.1,
+    lineHeight: 12,
+    paddingHorizontal: 1,
   },
   tight: {
     letterSpacing: 0.8,

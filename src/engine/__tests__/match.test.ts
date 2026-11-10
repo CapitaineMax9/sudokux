@@ -505,6 +505,28 @@ describe('duel', () => {
     expect(after.opponent?.remaining).toBeLessThan(remainingAtHit as number);
   });
 
+  it('une purge libère aussitôt le bot gelé', () => {
+    // Le bot ne tente une purge que 3 fois sur 4 : on cherche une graine où il la tente.
+    let checked = false;
+    for (let seed = 1; seed <= 12 && !checked; seed++) {
+      const bot = duel({ cellMs: [500, 500], powers: ['purge'] }, { seed });
+      const launched = run(withCharge(withCharge(bot, 100), 100, 'opponent'), {
+        type: 'power',
+        power: 'freeze',
+      }).state;
+      const hit = advance(launched, RULES.attackTravelMs + 100).state;
+      expect(hasEffect(hit.opponent as MatchState['player'], 'freeze')).toBe(true);
+      // Sa réaction arrive entre 0,7 et 1,8 s après l'impact.
+      const later = advance(hit, 2200);
+      if (!later.events.some((e) => e.type === 'effectsCleared' && e.side === 'opponent')) continue;
+      expect(hasEffect(later.state.opponent as MatchState['player'], 'freeze')).toBe(false);
+      // Libéré avant la fin normale du gel, il a recommencé à poser des chiffres.
+      expect(later.state.opponent?.remaining).toBeLessThan(hit.opponent?.remaining as number);
+      checked = true;
+    }
+    expect(checked).toBe(true);
+  });
+
   it('Virus efface des chiffres trouvés par le bot', () => {
     const progressed = advance(duel(), 5500).state;
     const before = progressed.opponent?.remaining as number;
