@@ -14,12 +14,15 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { installDevtools } from '@/game/devtools';
 import { useProgressReady } from '@/store/progress';
 import { C } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // L'écran de démarrage est peut-être déjà masqué : sans conséquence.
 });
+
+installDevtools();
 
 const NAV_THEME = {
   ...DarkTheme,

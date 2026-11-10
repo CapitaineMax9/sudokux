@@ -139,10 +139,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
     backgroundColor: C.yellow,
-    borderRadius: 3,
+    borderBottomLeftRadius: 5,
     paddingHorizontal: 6,
     paddingVertical: 3,
-    marginLeft: 8,
   },
 });

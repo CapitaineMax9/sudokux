@@ -78,7 +78,7 @@ export function GlitchText({
       </Animated.Text>
       <Animated.Text
         maxFontSizeMultiplier={1}
-        style={[base, { color }, textGlow(color, size * 0.35, 0.75)]}
+        style={[base, { color }, textGlow(color, size * 0.24, 0.6)]}
         numberOfLines={1}>
         {text}
       </Animated.Text>

@@ -10,7 +10,8 @@ export type TxtVariant =
   | 'body'
   | 'bodyBold'
   | 'small'
-  | 'mono';
+  | 'mono'
+  | 'num';
 
 export interface TxtProps extends TextProps {
   variant?: TxtVariant;
@@ -62,4 +63,6 @@ const styles = StyleSheet.create({
   bodyBold: { fontFamily: F.bodyBold, fontSize: 17, lineHeight: 22 },
   small: { fontFamily: F.bodySemi, fontSize: 14, lineHeight: 18 },
   mono: { fontFamily: F.mono, fontSize: 14, letterSpacing: 1 },
+  /** Valeurs chiffrées (score, chrono) : le zéro d'Orbitron est barré, on l'évite. */
+  num: { fontFamily: F.bodyBold, fontSize: 16, letterSpacing: 0.8 },
 });

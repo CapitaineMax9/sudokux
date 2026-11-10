@@ -15,7 +15,7 @@ import {
   randBetween,
   randIndex,
   resolveAttack,
-  usePower,
+  castPower,
   type MatchConfig,
   type MatchEvent,
   type MatchState,
@@ -228,7 +228,7 @@ function apply(state: MatchState, action: MatchAction, events: MatchEvent[]): vo
 
     case 'power': {
       if (!running) return;
-      const used = usePower(state, 'player', action.power, events);
+      const used = castPower(state, 'player', action.power, events);
       if (used && isAttack(action.power)) {
         const launched = state.pending[state.pending.length - 1];
         if (launched) aiOnAttackLaunched(state, { ...launched });
@@ -330,8 +330,11 @@ export function summarizeMatch(state: MatchState, parTimeMs: number): MatchSumma
   const flawlessBonus = won && player.mistakes === 0 ? 500 : 0;
   const total = player.score + speedBonus + flawlessBonus;
 
-  // L'expérience récompense aussi les défaites, pour ne jamais repartir bredouille.
-  const xp = won ? Math.round(total / 100) + stars * 25 + (duel ? 60 : 0) : 15;
+  // Une défaite rapporte un peu d'expérience, en proportion du travail accompli.
+  const placed = CELLS - state.config.puzzle.clues - player.remaining;
+  const xp = won
+    ? Math.round(total / 100) + stars * 25 + (duel ? 60 : 0)
+    : Math.min(15, Math.floor(placed / 2));
 
   return {
     won,

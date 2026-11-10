@@ -117,24 +117,25 @@ function BlackoutPanel({ left, top, size }: { left: number; top: number; size: n
   useEffect(() => {
     flicker.value = withRepeat(
       withSequence(
-        withTiming(0.86, { duration: 90 }),
+        withTiming(0.35, { duration: 90 }),
         withTiming(1, { duration: 60 }),
-        withTiming(0.94, { duration: 420 }),
+        withTiming(0.7, { duration: 420 }),
         withTiming(1, { duration: 120 }),
       ),
       -1,
     );
   }, [flicker]);
   const style = useAnimatedStyle(() => ({ opacity: flicker.value }));
+  // Le fond reste opaque (sinon on devinerait les chiffres) : seul le contenu scintille.
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.blackout, { left, top, width: size, height: size }, style]}>
-      <Icon name="blackout" size={Math.min(30, size * 0.3)} color={C.indigo} />
-      <Txt variant="label" color={C.indigo} size={8} center>
-        {t('game.noSignal')}
-      </Txt>
-    </Animated.View>
+    <View pointerEvents="none" style={[styles.blackout, { left, top, width: size, height: size }]}>
+      <Animated.View style={[styles.blackoutContent, style]}>
+        <Icon name="blackout" size={Math.min(30, size * 0.3)} color={C.indigo} />
+        <Txt variant="label" color={C.indigo} size={8} center>
+          {t('game.noSignal')}
+        </Txt>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -161,21 +162,18 @@ export const Board = memo(function Board({ maxSize }: BoardProps) {
   const stunned = useMatch((match) => match.player.stunnedUntil > match.now, false);
 
   const metrics = useMemo(() => boardMetrics(maxSize), [maxSize]);
-  const [glitchTick, setGlitchTick] = useState(0);
+  const [glitchCount, setGlitchCount] = useState(0);
   const [floaters, setFloaters] = useState<Floater[]>([]);
   const nextFloater = useRef(1);
   const shake = useSharedValue(0);
 
   // Pendant un brouillage, l'affichage change plusieurs fois par seconde.
   useEffect(() => {
-    if (!glitchSeed) {
-      setGlitchTick(0);
-      return;
-    }
-    setGlitchTick(1);
-    const timer = setInterval(() => setGlitchTick((tick) => tick + 1), 300);
+    if (!glitchSeed) return;
+    const timer = setInterval(() => setGlitchCount((count) => count + 1), 300);
     return () => clearInterval(timer);
   }, [glitchSeed]);
+  const glitchTick = glitchSeed ? glitchCount + 1 : 0;
 
   useEffect(() => {
     const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -362,11 +360,14 @@ const styles = StyleSheet.create({
     height: 5,
     transformOrigin: 'left',
   },
+  blackoutContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
   blackout: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
     backgroundColor: '#02030a',
     borderWidth: 1,
     borderColor: alpha(C.indigo, 0.6),

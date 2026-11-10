@@ -16,7 +16,7 @@ import {
   rand,
   randBetween,
   randIndex,
-  usePower,
+  castPower,
   type AiState,
   type MatchEvent,
   type MatchState,
@@ -59,11 +59,11 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
   // Réflexes programmés à l'avance.
   if (ai.shieldAt !== null && now >= ai.shieldAt) {
     ai.shieldAt = null;
-    usePower(state, 'opponent', 'shield', events);
+    castPower(state, 'opponent', 'shield', events);
   }
   if (ai.purgeAt !== null && now >= ai.purgeAt) {
     ai.purgeAt = null;
-    usePower(state, 'opponent', 'purge', events);
+    castPower(state, 'opponent', 'purge', events);
   }
 
   // Gelé ou sonné : il ne peut rien poser.
@@ -112,7 +112,7 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
       const power: PowerId = ai.wanted;
       ai.wanted = null;
       ai.nextPowerAt = now + randBetween(state, bot.powerDelayMs[0], bot.powerDelayMs[1]);
-      usePower(state, 'opponent', power, events);
+      castPower(state, 'opponent', power, events);
     }
   }
 }

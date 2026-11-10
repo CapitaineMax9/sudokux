@@ -35,6 +35,13 @@ function scramble(a: number, b: number, c: number): number {
   return h >>> 0;
 }
 
+/**
+ * La sélection se fait dès que le doigt touche la case (`onPressIn`), pour
+ * une réaction immédiate. Sur le web, un appui très bref n'est transmis que
+ * si `onPress` est aussi fourni : d'où cette fonction qui ne fait rien.
+ */
+const ignorePress = () => {};
+
 interface CellProps {
   index: number;
   size: number;
@@ -217,6 +224,7 @@ export const Cell = memo(function Cell({
         haptics.tap();
         dispatchMatch({ type: 'select', cell: index });
       }}
+      onPress={ignorePress}
       style={[styles.cell, { width: size, height: size, backgroundColor: BACKGROUNDS[highlight] }]}>
       {diagonal && highlight === HL_NONE ? (
         <View pointerEvents="none" style={[FILL, styles.diagonal]} />

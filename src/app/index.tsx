@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useT } from '@/i18n';
 import { rankOf, rankProgress, useProgress } from '@/store/progress';
 import { GlitchText } from '@/ui/GlitchText';
+import { LogoMark } from '@/ui/LogoMark';
 import { NeonButton } from '@/ui/NeonButton';
 import { Screen } from '@/ui/Screen';
 import { C, alpha, glow } from '@/ui/theme';
@@ -19,6 +20,7 @@ export default function HomeScreen() {
   return (
     <Screen>
       <View style={styles.hero}>
+        <LogoMark size={108} />
         <View style={styles.logoRow}>
           <GlitchText text="SUDOKU" size={38} />
           <GlitchText text="X" size={64} color={C.magenta} restMs={3100} style={styles.logoX} />
@@ -36,7 +38,7 @@ export default function HomeScreen() {
           <Txt variant="title" color={C.cyan} glow={6}>
             {t(`rank.${rank}` as 'rank.0').toUpperCase()}
           </Txt>
-          <Txt variant="label" color={C.textDim}>
+          <Txt variant="num" color={C.textDim} size={14}>
             {xp} XP
           </Txt>
         </View>
@@ -101,13 +103,14 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   hero: {
     flex: 1,
-    minHeight: 150,
+    minHeight: 250,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 22,
   },
   logoX: {
     marginLeft: 10,

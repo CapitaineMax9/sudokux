@@ -597,6 +597,13 @@ describe('bilan', () => {
 
   it('ne donne aucune étoile pour une défaite', () => {
     const lost = run(solo(), { type: 'abandon' }).state;
-    expect(summarizeMatch(lost, 60_000)).toMatchObject({ won: false, stars: 0, xp: 15 });
+    expect(summarizeMatch(lost, 60_000)).toMatchObject({ won: false, stars: 0, xp: 0 });
+  });
+
+  it('console une défaite selon le travail accompli', () => {
+    const worked = run(solo(), { type: 'debugFill', leave: 5 }, { type: 'abandon' }).state;
+    expect(summarizeMatch(worked, 60_000)).toMatchObject({ won: false, stars: 0, xp: 15 });
+    const barely = run(solo(), { type: 'debugFill', leave: CELLS - puzzle.clues - 4 }, { type: 'abandon' });
+    expect(summarizeMatch(barely.state, 60_000).xp).toBe(2);
   });
 });

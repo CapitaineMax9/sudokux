@@ -299,7 +299,7 @@ function addEffect(side: SideState, effect: ActiveEffect): void {
  * Une attaque n'agit pas tout de suite : elle part vers l'adversaire et
  * touchera sa cible après `RULES.attackTravelMs`.
  */
-export function usePower(
+export function castPower(
   state: MatchState,
   who: Side,
   power: PowerId,

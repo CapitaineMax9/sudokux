@@ -4,7 +4,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLocales } from 'expo-localization';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -234,12 +234,11 @@ export function useLang(): Lang {
   return chosen ?? deviceLang();
 }
 
+const subscribeToHydration = (onChange: () => void) =>
+  useProgress.persist.onFinishHydration(onChange);
+const isHydrated = () => useProgress.persist.hasHydrated();
+
 /** Vrai une fois la sauvegarde relue depuis l'appareil. */
 export function useProgressReady(): boolean {
-  const [ready, setReady] = useState(() => useProgress.persist.hasHydrated());
-  useEffect(() => {
-    if (useProgress.persist.hasHydrated()) setReady(true);
-    return useProgress.persist.onFinishHydration(() => setReady(true));
-  }, []);
-  return ready;
+  return useSyncExternalStore(subscribeToHydration, isHydrated, isHydrated);
 }

@@ -7,4 +7,11 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*', '.expo/*', 'node_modules/*'],
   },
+  {
+    // Les scripts d'outillage tournent avec Node, pas dans l'application.
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      globals: { __dirname: 'readonly', require: 'readonly', process: 'readonly', console: 'readonly' },
+    },
+  },
 ]);
