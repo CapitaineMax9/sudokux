@@ -20,10 +20,11 @@ export interface BotProfile {
 }
 
 /**
- * Réglages des adversaires. Une grille de duel a environ 41 cases à remplir :
- * `cellMs` × 41 donne le temps que met le bot si personne ne le gêne.
- * `rubber` le fait ralentir quand il mène et accélérer quand il est distancé,
- * pour que les duels restent serrés.
+ * Réglages des adversaires. Une grille de duel a environ 37 cases à remplir.
+ * `cellMs` est le rythme de départ du bot. Ensuite, `pace` cale sa vitesse
+ * sur celle du joueur (`ratio` 1.1 = 10 % plus lent que lui), dans les
+ * limites `minMs` / `maxMs`. Les duels restent ainsi serrés quel que soit
+ * le niveau du joueur : c'est l'usage des pouvoirs qui fait la différence.
  */
 export const BOTS: Record<string, BotProfile> = {
   drone: {
@@ -31,7 +32,7 @@ export const BOTS: Record<string, BotProfile> = {
     character: 'drone',
     tier: 0,
     unlockedBy: null,
-    puzzle: { difficulty: 'easy', clues: 40, variant: 'classic' },
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'classic' },
     config: {
       id: 'drone',
       cellMs: [9500, 12500],
@@ -39,7 +40,7 @@ export const BOTS: Record<string, BotProfile> = {
       powers: [],
       powerDelayMs: [20000, 30000],
       shieldReflex: 0,
-      rubber: 0.35,
+      pace: { ratio: 1.25, minMs: 8000, maxMs: 19000 },
       startDelayMs: 3500,
     },
     taunts: {
@@ -58,15 +59,15 @@ export const BOTS: Record<string, BotProfile> = {
     character: 'pixel',
     tier: 1,
     unlockedBy: 'c1m5',
-    puzzle: { difficulty: 'easy', clues: 40, variant: 'classic' },
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'classic' },
     config: {
       id: 'pixel',
-      cellMs: [7200, 10200],
+      cellMs: [8000, 11000],
       mistakeChance: 0.09,
       powers: ['freeze'],
       powerDelayMs: [16000, 24000],
       shieldReflex: 0,
-      rubber: 0.35,
+      pace: { ratio: 1.12, minMs: 6000, maxMs: 17000 },
       startDelayMs: 3000,
     },
     taunts: {
@@ -94,15 +95,15 @@ export const BOTS: Record<string, BotProfile> = {
     character: 'vesper',
     tier: 2,
     unlockedBy: 'c1m7',
-    puzzle: { difficulty: 'easy', clues: 40, variant: 'classic' },
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'classic' },
     config: {
       id: 'vesper',
-      cellMs: [6000, 8600],
+      cellMs: [7000, 9600],
       mistakeChance: 0.04,
       powers: ['freeze', 'glitch', 'shield'],
       powerDelayMs: [12000, 19000],
       shieldReflex: 0.45,
-      rubber: 0.3,
+      pace: { ratio: 1.04, minMs: 5000, maxMs: 16000 },
       startDelayMs: 2500,
     },
     taunts: {
@@ -124,15 +125,15 @@ export const BOTS: Record<string, BotProfile> = {
     character: 'neuf',
     tier: 3,
     unlockedBy: 'c1m8',
-    puzzle: { difficulty: 'easy', clues: 40, variant: 'x' },
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'x' },
     config: {
       id: 'neuf',
-      cellMs: [5200, 7600],
+      cellMs: [6200, 8600],
       mistakeChance: 0.03,
       powers: ['freeze', 'glitch', 'blackout', 'shield', 'purge'],
       powerDelayMs: [9000, 15000],
       shieldReflex: 0.55,
-      rubber: 0.28,
+      pace: { ratio: 1.0, minMs: 4200, maxMs: 15500 },
       startDelayMs: 2500,
     },
     taunts: {

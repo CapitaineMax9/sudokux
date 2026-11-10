@@ -31,6 +31,10 @@ export const Backdrop = memo(function Backdrop({ tint = C.cyan }: { tint?: strin
     transform: [{ translateY: -SWEEP_HEIGHT + sweep.value * (height + SWEEP_HEIGHT) }],
   }));
 
+  // Sur le web, les identifiants SVG sont globaux à la page : on y glisse la
+  // couleur pour que deux écrans empilés ne se marchent pas dessus.
+  const glowId = `glowBottom-${tint.replace('#', '')}`;
+
   return (
     <View style={styles.root} pointerEvents="none">
       <Svg width="100%" height="100%" style={FILL}>
@@ -39,7 +43,7 @@ export const Backdrop = memo(function Backdrop({ tint = C.cyan }: { tint?: strin
             <Stop offset="0" stopColor={C.magenta} stopOpacity={0.2} />
             <Stop offset="1" stopColor={C.magenta} stopOpacity={0} />
           </RadialGradient>
-          <RadialGradient id="glowBottom" cx="90%" cy="100%" r="80%">
+          <RadialGradient id={glowId} cx="90%" cy="100%" r="80%">
             <Stop offset="0" stopColor={tint} stopOpacity={0.16} />
             <Stop offset="1" stopColor={tint} stopOpacity={0} />
           </RadialGradient>
@@ -57,7 +61,7 @@ export const Backdrop = memo(function Backdrop({ tint = C.cyan }: { tint?: strin
           </Pattern>
         </Defs>
         <Rect width="100%" height="100%" fill="url(#glowTop)" />
-        <Rect width="100%" height="100%" fill="url(#glowBottom)" />
+        <Rect width="100%" height="100%" fill={`url(#${glowId})`} />
         <Rect width="100%" height="100%" fill="url(#grid)" />
         <Rect width="100%" height="100%" fill="url(#scan)" />
       </Svg>

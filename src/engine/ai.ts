@@ -26,6 +26,9 @@ import {
 /** Jamais dans l'avenir prévisible : sert à désactiver une échéance. */
 const NEVER = Number.MAX_SAFE_INTEGER;
 
+/** Poids du rythme de départ du bot face aux mesures du joueur (en cases). */
+const PACE_PRIOR = 2.5;
+
 export function createAi(state: MatchState): AiState | null {
   const { bot, puzzle } = state.config;
   if (!bot) return null;
@@ -73,11 +76,22 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
 
   if (now >= ai.nextMoveAt) {
     const glitched = hasEffect(me, 'glitch');
-    // Positif quand le bot est en tête.
-    const lead = state.player.remaining - me.remaining;
-    const rubber = 1 + bot.rubber * Math.max(-1, Math.min(1, lead / 8));
-    const interval =
-      randBetween(state, bot.cellMs[0], bot.cellMs[1]) * (glitched ? 1.7 : 1) * rubber;
+    let interval = randBetween(state, bot.cellMs[0], bot.cellMs[1]);
+    if (bot.pace) {
+      // Temps moyen par case du joueur jusqu'ici. Au début, on n'a presque
+      // aucune mesure : on part du rythme propre du bot (PACE_PRIOR cases
+      // fictives), que les vraies cases du joueur remplacent peu à peu.
+      const mean = (bot.cellMs[0] + bot.cellMs[1]) / 2;
+      const total = CELLS - state.config.puzzle.clues;
+      const placed = Math.max(0, total - state.player.remaining);
+      const playerPace = (mean * PACE_PRIOR + now) / (PACE_PRIOR + placed);
+      const target = Math.max(
+        bot.pace.minMs,
+        Math.min(bot.pace.maxMs, playerPace * bot.pace.ratio),
+      );
+      interval = target * (interval / mean);
+    }
+    if (glitched) interval *= 1.7;
     const cell = ai.order.find((c) => me.values[c] === 0 && !isCellHidden(me, c));
 
     if (cell === undefined) {

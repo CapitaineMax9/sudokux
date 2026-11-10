@@ -64,7 +64,7 @@ export interface PendingAttack {
 /** Réglages d'un adversaire contrôlé par l'ordinateur. */
 export interface BotConfig {
   id: string;
-  /** Temps mini / maxi entre deux chiffres posés. */
+  /** Temps mini / maxi entre deux chiffres posés (rythme de départ si `pace` est défini). */
   cellMs: [number, number];
   /** Probabilité de se tromper à chaque tentative. */
   mistakeChance: number;
@@ -73,8 +73,13 @@ export interface BotConfig {
   powerDelayMs: [number, number];
   /** Probabilité de lever un bouclier quand une attaque arrive. */
   shieldReflex: number;
-  /** 0 = rythme fixe ; plus haut = il ralentit en tête et accélère en retard. */
-  rubber: number;
+  /**
+   * Rythme adaptatif : le bot cale sa vitesse sur celle du joueur.
+   * `ratio` < 1 = un peu plus rapide que le joueur, > 1 = un peu plus lent ;
+   * le temps par case reste borné entre `minMs` et `maxMs`.
+   * `null` = rythme fixe donné par `cellMs`.
+   */
+  pace: { ratio: number; minMs: number; maxMs: number } | null;
   startDelayMs: number;
 }
 

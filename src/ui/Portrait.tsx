@@ -226,8 +226,9 @@ export const Portrait = memo(function Portrait({ who, size = 96, dimmed = false 
       break;
   }
 
+  // Identifiants uniques par personnage et par état (voir Backdrop.tsx).
   const clipId = `portrait-clip-${who}`;
-  const gradId = `portrait-grad-${who}`;
+  const gradId = `portrait-grad-${who}-${dimmed ? 'off' : 'on'}`;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">

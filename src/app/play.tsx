@@ -271,11 +271,9 @@ export default function PlayScreen() {
         else pause();
         return true;
       }
-      if (phase === 'result') {
-        exit();
-        return true;
-      }
-      // Pendant les dialogues et les animations, on ignore le bouton.
+      // Avant ou après la partie, le bouton quitte l'écran ; pendant les
+      // animations de fin, on l'ignore pour ne rien interrompre.
+      if (phase !== 'finishing' && phase !== 'outro') exit();
       return true;
     });
     return () => subscription.remove();

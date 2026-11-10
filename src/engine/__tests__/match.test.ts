@@ -22,7 +22,7 @@ const BOT: BotConfig = {
   powers: [],
   powerDelayMs: [1000, 1000],
   shieldReflex: 0,
-  rubber: 0,
+  pace: null,
   startDelayMs: 0,
 };
 
@@ -548,7 +548,7 @@ describe('duel', () => {
       powers: ['freeze', 'glitch', 'blackout', 'virus', 'shield', 'purge'],
       powerDelayMs: [2000, 5000],
       shieldReflex: 0.5,
-      rubber: 0.3,
+      pace: { ratio: 1, minMs: 500, maxMs: 2000 },
     };
     const a = advance(duel(bot, { seed: 77 }), 90_000);
     const b = advance(duel(bot, { seed: 77 }), 90_000);
