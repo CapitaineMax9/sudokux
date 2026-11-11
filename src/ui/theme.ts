@@ -26,6 +26,10 @@ export const C = {
   ice: '#8fe3ff',
   orange: '#ff9f1c',
   indigo: '#6c7dff',
+  teal: '#2ee6c8',
+  lime: '#b6ff3b',
+  silver: '#dfe6ff',
+  coral: '#ff6f59',
 
   text: '#e8f6ff',
   textDim: '#93a0cc',
@@ -73,6 +77,10 @@ export const POWER_COLORS: Record<PowerId, string> = {
   glitch: C.magenta,
   blackout: C.indigo,
   virus: C.red,
+  sonar: C.teal,
+  siphon: C.lime,
+  mirror: C.silver,
+  flip: C.coral,
 };
 
 /** Ajoute de la transparence à une couleur `#rrggbb`. */

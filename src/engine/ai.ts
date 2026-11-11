@@ -45,7 +45,7 @@ export function createAi(state: MatchState): AiState | null {
     nextMoveAt: bot.startDelayMs,
     nextPowerAt: bot.startDelayMs + randBetween(state, bot.powerDelayMs[0], bot.powerDelayMs[1]),
     wanted: null,
-    shieldAt: null,
+    guard: null,
     purgeAt: null,
   };
 }
@@ -59,9 +59,10 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
   const now = state.now;
 
   // Réflexes programmés à l'avance.
-  if (ai.shieldAt !== null && now >= ai.shieldAt) {
-    ai.shieldAt = null;
-    castPower(state, 'opponent', 'shield', events);
+  if (ai.guard !== null && now >= ai.guard.at) {
+    const defense = ai.guard.power;
+    ai.guard = null;
+    castPower(state, 'opponent', defense, events);
   }
   if (ai.purgeAt !== null && now >= ai.purgeAt) {
     ai.purgeAt = null;
@@ -90,13 +91,17 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
       );
       interval = target * (interval / mean);
     }
+    // Grille brouillée ou retournée : il hésite et se trompe davantage.
+    const dizzy = hasEffect(me, 'flip');
     if (glitched) interval *= 1.7;
+    if (dizzy) interval *= 1.5;
+    const slip = bot.mistakeChance + (glitched ? 0.25 : 0) + (dizzy ? 0.15 : 0);
     const cell = ai.order.find((c) => me.values[c] === 0 && !isCellHidden(me, c));
 
     if (cell === undefined) {
       // Tout ce qui lui reste est masqué : il patiente.
       ai.nextMoveAt = now + 400;
-    } else if (rand(state) < bot.mistakeChance + (glitched ? 0.25 : 0)) {
+    } else if (rand(state) < slip) {
       const right = state.config.puzzle.solution[cell];
       const wrong = ((right - 1 + 1 + randIndex(state, 8)) % 9) + 1;
       me.mistakes += 1;
@@ -130,16 +135,24 @@ export function aiStep(state: MatchState, events: MatchEvent[]): void {
   }
 }
 
-/** Le joueur vient de lancer une attaque : le bot tentera peut-être un bouclier. */
+/** Une attaque part vers le bot : il tentera peut-être de lever une défense. */
 export function aiOnAttackLaunched(state: MatchState, attack: PendingAttack): void {
   const bot = state.config.bot;
   const ai = state.ai;
   const me = state.opponent;
   if (!bot || !ai || !me || attack.target !== 'opponent') return;
-  if (!bot.powers.includes('shield') || hasEffect(me, 'shield')) return;
-  if (me.charge < POWERS.shield.cost) return;
+  // Déjà protégé, ou déjà en train de réagir : inutile d'en faire plus.
+  if (hasEffect(me, 'shield') || hasEffect(me, 'mirror') || ai.guard !== null) return;
+  // Il préfère le Miroir (qui renvoie l'attaque) s'il peut se l'offrir.
+  const defense = (['mirror', 'shield'] as const).find(
+    (power) => bot.powers.includes(power) && me.charge >= POWERS[power].cost,
+  );
+  if (!defense) return;
   if (rand(state) < bot.shieldReflex) {
-    ai.shieldAt = state.now + randBetween(state, 350, RULES.attackTravelMs - 250);
+    ai.guard = {
+      at: state.now + randBetween(state, 350, RULES.attackTravelMs - 250),
+      power: defense,
+    };
   }
 }
 

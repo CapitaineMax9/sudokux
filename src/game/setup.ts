@@ -66,6 +66,7 @@ export function buildStoryMatch(levelId: string, player: PlayerPowers): MatchSet
       timeLimitMs: level.timeLimitMs,
       countermeasures: level.countermeasures,
       bot: bot ? bot.config : null,
+      remote: false,
     },
   };
 }
@@ -90,6 +91,7 @@ export function buildFreeMatch(
       timeLimitMs: null,
       countermeasures: null,
       bot: null,
+      remote: false,
     },
   };
 }
@@ -115,6 +117,7 @@ export function buildDuelMatch(
       timeLimitMs: null,
       countermeasures: null,
       bot: bot.config,
+      remote: false,
     },
   };
 }

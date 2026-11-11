@@ -10,7 +10,7 @@ import {
   type MatchEvent,
   type MatchState,
 } from '../match';
-import { POWERS, RULES, type PowerId } from '../powers';
+import { POWERS, POWER_ORDER, RULES, type PowerId } from '../powers';
 import { CELLS, boxOf, candidatesOf, generatePuzzle, topology } from '../sudoku';
 
 const puzzle = generatePuzzle({ seed: 2024, difficulty: 'easy' });
@@ -26,7 +26,7 @@ const BOT: BotConfig = {
   startDelayMs: 0,
 };
 
-const ALL_POWERS: PowerId[] = ['scan', 'analyse', 'shield', 'purge', 'freeze', 'glitch', 'blackout', 'virus'];
+const ALL_POWERS: PowerId[] = [...POWER_ORDER];
 
 function solo(overrides: Partial<MatchConfig> = {}): MatchState {
   return createMatch({
@@ -38,6 +38,7 @@ function solo(overrides: Partial<MatchConfig> = {}): MatchState {
     timeLimitMs: null,
     countermeasures: null,
     bot: null,
+    remote: false,
     ...overrides,
   });
 }
@@ -52,6 +53,7 @@ function duel(bot: Partial<BotConfig> = {}, overrides: Partial<MatchConfig> = {}
     timeLimitMs: null,
     countermeasures: null,
     bot: { ...BOT, ...bot },
+    remote: false,
     ...overrides,
   });
 }

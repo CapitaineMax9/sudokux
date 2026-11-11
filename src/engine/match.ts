@@ -23,7 +23,8 @@ import {
   type Side,
   type SideState,
 } from './matchCore';
-import { RULES, isAttack, type PowerId } from './powers';
+import { RULES, type PowerId } from './powers';
+import { applyRemote, type RemoteEvent } from './remote';
 import { CELLS, countEmpty, type Difficulty } from './sudoku';
 
 export type MatchAction =
@@ -36,6 +37,8 @@ export type MatchAction =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'abandon' }
+  /** Duel en ligne : une action de l'adversaire ou le verdict du serveur. */
+  | { type: 'remote'; event: RemoteEvent }
   /** Outil de test : remplit la grille d'un camp en laissant `leave` cases. */
   | { type: 'debugFill'; leave: number; side?: Side };
 
@@ -43,6 +46,9 @@ export interface MatchStep {
   state: MatchState;
   events: MatchEvent[];
 }
+
+/** En ligne, délai après lequel une attaque restée sans réponse est oubliée. */
+const REMOTE_ANSWER_GRACE_MS = 6000;
 
 function createSide(config: MatchConfig): SideState {
   return {
@@ -68,7 +74,7 @@ export function createMatch(config: MatchConfig): MatchState {
     endReason: null,
     now: 0,
     player: createSide(config),
-    opponent: config.bot ? createSide(config) : null,
+    opponent: config.bot || config.remote ? createSide(config) : null,
     ai: null,
     pending: [],
     selected: null,
@@ -86,8 +92,12 @@ function tick(state: MatchState, dt: number, events: MatchEvent[]): void {
   const now = state.now;
   const sides: Side[] = state.opponent ? ['player', 'opponent'] : ['player'];
 
-  // 1. Effets arrivés à leur terme.
+  const remote = state.config.remote;
+
+  // 1. Effets arrivés à leur terme. (En ligne, ceux de l'adversaire sont
+  // tenus à jour par ses propres messages.)
   for (const who of sides) {
+    if (remote && who === 'opponent') continue;
     const side = who === 'player' ? state.player : (state.opponent as SideState);
     for (let i = side.effects.length - 1; i >= 0; i--) {
       if (side.effects[i].until <= now) {
@@ -98,12 +108,17 @@ function tick(state: MatchState, dt: number, events: MatchEvent[]): void {
     if (side.combo > 0 && now - side.lastCorrectAt > RULES.comboWindowMs) side.combo = 0;
   }
 
-  // 2. Attaques qui atteignent leur cible.
+  // 2. Attaques qui atteignent leur cible. En ligne, nos attaques sont
+  // résolues chez l'adversaire : elles restent en attente de sa réponse, et
+  // on les oublie si elle ne vient jamais.
+  const awaited = (attack: PendingAttack) => remote && attack.target === 'opponent';
   if (state.pending.some((attack) => attack.hitAt <= now)) {
     const due: PendingAttack[] = state.pending
-      .filter((attack) => attack.hitAt <= now)
+      .filter((attack) => attack.hitAt <= now && !awaited(attack))
       .map((attack) => ({ ...attack }));
-    state.pending = state.pending.filter((attack) => attack.hitAt > now);
+    state.pending = state.pending.filter((attack) =>
+      awaited(attack) ? now < attack.hitAt + REMOTE_ANSWER_GRACE_MS : attack.hitAt > now,
+    );
     for (const attack of due) {
       const before = events.length;
       resolveAttack(state, attack, events);
@@ -122,6 +137,7 @@ function tick(state: MatchState, dt: number, events: MatchEvent[]): void {
     const power = countermeasures.pool[randIndex(state, countermeasures.pool.length)];
     const attack: PendingAttack = {
       id: state.nextId++,
+      ref: null,
       power,
       from: 'system',
       target: 'player',
@@ -226,15 +242,13 @@ function apply(state: MatchState, action: MatchAction, events: MatchEvent[]): vo
       if (running) state.notesMode = !state.notesMode;
       return;
 
-    case 'power': {
-      if (!running) return;
-      const used = castPower(state, 'player', action.power, events);
-      if (used && isAttack(action.power)) {
-        const launched = state.pending[state.pending.length - 1];
-        if (launched) aiOnAttackLaunched(state, { ...launched });
-      }
+    case 'power':
+      if (running) castPower(state, 'player', action.power, events);
       return;
-    }
+
+    case 'remote':
+      applyRemote(state, action.event, events);
+      return;
 
     case 'pause':
       if (running) state.status = 'paused';
@@ -261,7 +275,8 @@ function apply(state: MatchState, action: MatchAction, events: MatchEvent[]): vo
         side.remaining -= 1;
       }
       if (side.remaining === 0) {
-        if (who === 'player') finishMatch(state, 'won', 'solved', events);
+        if (state.config.remote) events.push({ type: 'completed', side: who });
+        else if (who === 'player') finishMatch(state, 'won', 'solved', events);
         else finishMatch(state, 'lost', 'outpaced', events);
       }
       return;
@@ -273,6 +288,13 @@ export function reduceMatch(state: MatchState, action: MatchAction): MatchStep {
   const events: MatchEvent[] = [];
   const next = produce(state, (draft) => {
     apply(draft as MatchState, action, events);
+    // Toute attaque qui part vers le bot (lancée ou renvoyée par un Miroir)
+    // lui laisse une chance de réagir.
+    for (const event of events) {
+      if (event.type === 'attackLaunched' && event.attack.target === 'opponent') {
+        aiOnAttackLaunched(draft as MatchState, event.attack);
+      }
+    }
   });
   return { state: next, events };
 }
@@ -316,7 +338,10 @@ export function summarizeMatch(state: MatchState, parTimeMs: number): MatchSumma
   let speedBonus = 0;
   let stars: 0 | 1 | 2 | 3 = 0;
   if (won) {
-    if (duel) {
+    if (state.endReason === 'forfeit') {
+      // L'adversaire a quitté la partie : victoire, mais sans bonus d'avance.
+      stars = 1;
+    } else if (duel) {
       const lead = opponentRemaining ?? 0;
       speedBonus = lead * 150;
       stars = lead >= 8 ? 3 : lead >= 4 ? 2 : 1;

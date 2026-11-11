@@ -425,6 +425,43 @@ export function logicSolve(
   return { solved: remaining === 0 && !broken, grid, level, order };
 }
 
+/**
+ * Cases que l'on peut remplir tout de suite par simple déduction : celles qui
+ * n'acceptent plus qu'un chiffre, et celles qui sont le seul endroit possible
+ * pour un chiffre dans une ligne, une colonne ou un bloc.
+ */
+export function obviousCells(grid: Grid, variant: Variant = 'classic'): number[] {
+  const { units } = topology(variant);
+  const found = new Set<number>();
+  const cand = new Array<number>(CELLS).fill(0);
+
+  for (let i = 0; i < CELLS; i++) {
+    if (grid[i] !== 0) continue;
+    cand[i] = candidatesOf(grid, i, variant);
+    if (POPCOUNT[cand[i]] === 1) found.add(i);
+  }
+  for (const unit of units) {
+    for (let d = 1; d <= 9; d++) {
+      const b = bit(d);
+      let spot = -1;
+      let n = 0;
+      for (const c of unit.cells) {
+        if (grid[c] === d) {
+          n = -1;
+          break;
+        }
+        if (grid[c] === 0 && cand[c] & b) {
+          n++;
+          spot = c;
+          if (n > 1) break;
+        }
+      }
+      if (n === 1) found.add(spot);
+    }
+  }
+  return [...found].sort((a, b) => a - b);
+}
+
 export function gradePuzzle(puzzle: Grid, variant: Variant = 'classic'): TechniqueLevel {
   const result = logicSolve(puzzle, variant, 2);
   return result.solved ? result.level : 3;

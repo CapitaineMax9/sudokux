@@ -7,7 +7,15 @@
  * brouillon immer : l'état vu par l'interface reste donc immuable.
  */
 import { nextRandom } from './rng';
-import { CELLS, boxOf, candidatesOf, topology, type Puzzle, type UnitKind } from './sudoku';
+import {
+  CELLS,
+  boxOf,
+  candidatesOf,
+  obviousCells,
+  topology,
+  type Puzzle,
+  type UnitKind,
+} from './sudoku';
 import {
   NEGATIVE_EFFECTS,
   POWERS,
@@ -28,6 +36,8 @@ export interface ActiveEffect {
   until: number;
   /** Blocs masqués (blackout uniquement). */
   boxes: number[];
+  /** Cases mises en évidence (sonar uniquement). */
+  cells: number[];
   /** Graine d'affichage (brouillage uniquement). */
   seed: number;
 }
@@ -54,6 +64,11 @@ export interface SideState {
 
 export interface PendingAttack {
   id: number;
+  /**
+   * En ligne, numéro de cette attaque sur l'appareil de celui qui l'a
+   * lancée : il sert à lui renvoyer le résultat. `null` hors ligne.
+   */
+  ref: number | null;
   power: AttackId;
   from: AttackSource;
   target: Side;
@@ -71,7 +86,7 @@ export interface BotConfig {
   powers: PowerId[];
   /** Temps mini / maxi entre deux pouvoirs. */
   powerDelayMs: [number, number];
-  /** Probabilité de lever un bouclier quand une attaque arrive. */
+  /** Probabilité de lever une défense (Pare-feu ou Miroir) quand une attaque arrive. */
   shieldReflex: number;
   /**
    * Rythme adaptatif : le bot cale sa vitesse sur celle du joueur.
@@ -90,7 +105,8 @@ export interface AiState {
   nextPowerAt: number;
   /** Pouvoir pour lequel il économise sa charge. */
   wanted: PowerId | null;
-  shieldAt: number | null;
+  /** Défense qu'il a prévu de lever, et à quel instant. */
+  guard: { at: number; power: 'shield' | 'mirror' } | null;
   purgeAt: number | null;
 }
 
@@ -113,10 +129,25 @@ export interface MatchConfig {
   timeLimitMs: number | null;
   countermeasures: CountermeasureConfig | null;
   bot: BotConfig | null;
+  /**
+   * Duel en ligne : l'adversaire est un autre joueur. Son plateau n'évolue
+   * que par les messages reçus du réseau (voir `remote.ts`), et c'est le
+   * serveur qui désigne le vainqueur.
+   */
+  remote: boolean;
 }
 
 export type MatchStatus = 'running' | 'paused' | 'won' | 'lost';
-export type EndReason = 'solved' | 'mistakes' | 'timeout' | 'outpaced' | 'abandon';
+export type EndReason =
+  | 'solved'
+  | 'mistakes'
+  | 'timeout'
+  | 'outpaced'
+  | 'abandon'
+  /** En ligne : l'adversaire a quitté la partie. */
+  | 'forfeit'
+  /** En ligne : la connexion au serveur a été perdue. */
+  | 'disconnected';
 
 export interface MatchState {
   config: MatchConfig;
@@ -160,7 +191,20 @@ export type MatchEvent =
   | { type: 'effectEnded'; side: Side; effect: EffectId }
   | { type: 'attackLaunched'; attack: PendingAttack }
   | { type: 'attackBlocked'; attack: PendingAttack }
-  | { type: 'attackHit'; attack: PendingAttack; cells: number[]; boxes: number[] }
+  /** L'attaque a rebondi sur un Miroir : elle repart vers son auteur. */
+  | { type: 'attackReflected'; attack: PendingAttack }
+  | {
+      type: 'attackHit';
+      attack: PendingAttack;
+      /** Cases effacées (virus). */
+      cells: number[];
+      /** Blocs masqués (blackout). */
+      boxes: number[];
+      /** Charge volée (siphon). */
+      amount: number;
+    }
+  /** En ligne : la grille de ce camp est terminée, on attend le verdict du serveur. */
+  | { type: 'completed'; side: Side }
   | { type: 'finished'; result: 'won' | 'lost'; reason: EndReason };
 
 /* ------------------------------------------------------------------ */
@@ -184,6 +228,15 @@ export const hasEffect = (side: SideState, id: EffectId) => findEffect(side, id)
 export function isCellHidden(side: SideState, cell: number): boolean {
   const blackout = findEffect(side, 'blackout');
   return blackout !== undefined && blackout.boxes.includes(boxOf(cell));
+}
+
+export function makeEffect(
+  id: EffectId,
+  now: number,
+  until: number,
+  extra: Partial<Pick<ActiveEffect, 'boxes' | 'cells' | 'seed'>> = {},
+): ActiveEffect {
+  return { id, startedAt: now, until, boxes: [], cells: [], seed: 0, ...extra };
 }
 
 export function rand(state: MatchState): number {
@@ -283,8 +336,14 @@ export function placeCorrect(
   }
 
   if (side.remaining === 0) {
-    if (who === 'player') finishMatch(state, 'won', 'solved', events);
-    else finishMatch(state, 'lost', 'outpaced', events);
+    if (state.config.remote) {
+      // En ligne, le serveur arbitre : on signale seulement que la grille est finie.
+      events.push({ type: 'completed', side: who });
+    } else if (who === 'player') {
+      finishMatch(state, 'won', 'solved', events);
+    } else {
+      finishMatch(state, 'lost', 'outpaced', events);
+    }
   }
 }
 
@@ -297,6 +356,7 @@ function addEffect(side: SideState, effect: ActiveEffect): void {
   existing.until = Math.max(existing.until, effect.until);
   existing.seed = effect.seed;
   if (effect.boxes.length > 0) existing.boxes = effect.boxes;
+  if (effect.cells.length > 0) existing.cells = effect.cells;
 }
 
 /**
@@ -326,6 +386,7 @@ export function castPower(
     side.powersUsed += 1;
     events.push({ type: 'powerUsed', side: who, power });
   };
+  const until = state.now + def.durationMs;
 
   switch (power) {
     case 'scan': {
@@ -359,16 +420,24 @@ export function castPower(
       return true;
     }
 
-    case 'shield': {
-      if (hasEffect(side, 'shield')) return deny('active');
+    case 'sonar': {
+      // Cases déductibles tout de suite, hors des blocs plongés dans le noir.
+      const cells = obviousCells(side.values, state.config.puzzle.variant).filter(
+        (cell) => !isCellHidden(side, cell),
+      );
+      if (cells.length === 0) return deny('noTarget');
       spend();
-      addEffect(side, {
-        id: 'shield',
-        startedAt: state.now,
-        until: state.now + def.durationMs,
-        boxes: [],
-        seed: 0,
-      });
+      // Un nouveau sonar remplace l'ancien : la liste doit refléter la grille actuelle.
+      side.effects = side.effects.filter((e) => e.id !== 'sonar');
+      side.effects.push(makeEffect('sonar', state.now, until, { cells }));
+      return true;
+    }
+
+    case 'shield':
+    case 'mirror': {
+      if (hasEffect(side, power)) return deny('active');
+      spend();
+      addEffect(side, makeEffect(power, state.now, until));
       return true;
     }
 
@@ -386,6 +455,7 @@ export function castPower(
       spend();
       const attack: PendingAttack = {
         id: state.nextId++,
+        ref: null,
         power,
         from: who,
         target: otherSide(who),
@@ -399,10 +469,34 @@ export function castPower(
   }
 }
 
-/** Applique une attaque arrivée à destination (ou la fait absorber par un bouclier). */
+/**
+ * Applique une attaque arrivée à destination. Un Miroir la renvoie à son
+ * auteur, un Pare-feu l'absorbe ; sinon elle produit son effet.
+ */
 export function resolveAttack(state: MatchState, incoming: PendingAttack, events: MatchEvent[]): void {
   const attack: PendingAttack = { ...incoming };
   const target = sideOf(state, attack.target);
+  const now = state.now;
+
+  const mirrorIndex = target.effects.findIndex((e) => e.id === 'mirror');
+  if (mirrorIndex >= 0) {
+    target.effects.splice(mirrorIndex, 1);
+    events.push({ type: 'attackReflected', attack });
+    if (attack.from !== 'system') {
+      const back: PendingAttack = {
+        id: state.nextId++,
+        ref: null,
+        power: attack.power,
+        from: attack.target,
+        target: attack.from,
+        launchedAt: now,
+        hitAt: now + RULES.attackTravelMs,
+      };
+      state.pending.push(back);
+      events.push({ type: 'attackLaunched', attack: { ...back } });
+    }
+    return;
+  }
 
   const shieldIndex = target.effects.findIndex((e) => e.id === 'shield');
   if (shieldIndex >= 0) {
@@ -411,24 +505,22 @@ export function resolveAttack(state: MatchState, incoming: PendingAttack, events
     return;
   }
 
-  const now = state.now;
   const until = now + POWERS[attack.power].durationMs;
   let cells: number[] = [];
   let boxes: number[] = [];
+  let amount = 0;
 
   switch (attack.power) {
     case 'freeze':
-      addEffect(target, { id: 'freeze', startedAt: now, until, boxes: [], seed: 0 });
+    case 'flip':
+      addEffect(target, makeEffect(attack.power, now, until));
       break;
 
     case 'glitch':
-      addEffect(target, {
-        id: 'glitch',
-        startedAt: now,
-        until,
-        boxes: [],
-        seed: Math.floor(rand(state) * 0x7fffffff),
-      });
+      addEffect(
+        target,
+        makeEffect('glitch', now, until, { seed: Math.floor(rand(state) * 0x7fffffff) }),
+      );
       break;
 
     case 'blackout': {
@@ -454,7 +546,7 @@ export function resolveAttack(state: MatchState, incoming: PendingAttack, events
         ...unfinished.slice(0, fromUnfinished),
         ...finished.slice(0, RULES.blackoutBoxes - fromUnfinished),
       ].sort((a, b) => a - b);
-      addEffect(target, { id: 'blackout', startedAt: now, until, boxes: [...boxes], seed: 0 });
+      addEffect(target, makeEffect('blackout', now, until, { boxes: [...boxes] }));
       if (
         attack.target === 'player' &&
         state.selected !== null &&
@@ -477,7 +569,20 @@ export function resolveAttack(state: MatchState, incoming: PendingAttack, events
       }
       break;
     }
+
+    case 'siphon': {
+      amount = Math.min(RULES.siphonAmount, target.charge);
+      target.charge -= amount;
+      // Le voleur est crédité ici s'il joue sur cet appareil. En ligne,
+      // l'attaquant distant sera crédité chez lui en recevant le résultat.
+      const local = attack.from !== 'system' && !(state.config.remote && attack.from === 'opponent');
+      if (local) {
+        const thief = sideOf(state, attack.from as Side);
+        thief.charge = Math.min(RULES.maxCharge, thief.charge + amount);
+      }
+      break;
+    }
   }
 
-  events.push({ type: 'attackHit', attack, cells, boxes });
+  events.push({ type: 'attackHit', attack, cells, boxes, amount });
 }

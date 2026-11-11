@@ -132,6 +132,42 @@ export const Icon = memo(function Icon({
         </>
       );
       break;
+    case 'sonar':
+      body = (
+        <>
+          <Circle cx={12} cy={12} r={2} fill={color} />
+          <Path d="M7.8 16.2a6 6 0 010-8.4M16.2 7.8a6 6 0 010 8.4" {...line} />
+          <Path d="M4.9 19.1a10 10 0 010-14.2M19.1 4.9a10 10 0 010 14.2" {...line} />
+        </>
+      );
+      break;
+    case 'siphon':
+      body = (
+        <>
+          <Path d="M4 5h16l-6 7v6l-4 2v-8z" {...line} />
+          <Path d="M9 2.5v0M12 2.5v0M15 2.5v0" {...line} strokeWidth={strokeWidth * 1.4} />
+        </>
+      );
+      break;
+    case 'mirror':
+      body = (
+        <>
+          <Path d="M12 3v18" {...line} strokeDasharray="2.5 3" />
+          <Path d="M3 8h5.5M6 5.5L8.5 8 6 10.5" {...line} />
+          <Path d="M21 16h-5.5M18 13.5L15.5 16l2.5 2.5" {...line} />
+        </>
+      );
+      break;
+    case 'flip':
+      body = (
+        <>
+          <Path d="M5 9a7.5 7.5 0 0113.5-2.5" {...line} />
+          <Path d="M19 2.5v4.5h-4.5" {...line} />
+          <Path d="M19 15a7.5 7.5 0 01-13.5 2.5" {...line} />
+          <Path d="M5 21.5V17h4.5" {...line} />
+        </>
+      );
+      break;
     case 'back':
       body = <Path d="M15 5l-7 7 7 7" {...line} />;
       break;

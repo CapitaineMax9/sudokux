@@ -11,13 +11,17 @@ export type PowerId =
   | 'freeze'
   | 'glitch'
   | 'blackout'
-  | 'virus';
+  | 'virus'
+  | 'sonar'
+  | 'siphon'
+  | 'mirror'
+  | 'flip';
 
 /** `support` aide à résoudre, `defense` protège, `attack` vise l'adversaire. */
 export type PowerKind = 'support' | 'defense' | 'attack';
-export type AttackId = 'freeze' | 'glitch' | 'blackout' | 'virus';
+export type AttackId = 'freeze' | 'glitch' | 'blackout' | 'virus' | 'siphon' | 'flip';
 /** Effets qui durent dans le temps sur le plateau d'un joueur. */
-export type EffectId = 'freeze' | 'glitch' | 'blackout' | 'shield';
+export type EffectId = 'freeze' | 'glitch' | 'blackout' | 'shield' | 'sonar' | 'mirror' | 'flip';
 
 export interface PowerDef {
   id: PowerId;
@@ -45,6 +49,14 @@ export const POWERS: Record<PowerId, PowerDef> = {
   blackout: { id: 'blackout', kind: 'attack', cost: 50, durationMs: 9000 },
   /** Efface des chiffres déjà trouvés par l'adversaire. */
   virus: { id: 'virus', kind: 'attack', cost: 65, durationMs: 0 },
+  /** Fait briller les cases que l'on peut déduire tout de suite. */
+  sonar: { id: 'sonar', kind: 'support', cost: 25, durationMs: 10000 },
+  /** Vole de la charge à l'adversaire. */
+  siphon: { id: 'siphon', kind: 'attack', cost: 35, durationMs: 0 },
+  /** Renvoie la prochaine attaque reçue à celui qui l'a lancée. */
+  mirror: { id: 'mirror', kind: 'defense', cost: 45, durationMs: 12000 },
+  /** Retourne la grille adverse tête en bas : les 6 et les 9 se confondent. */
+  flip: { id: 'flip', kind: 'attack', cost: 45, durationMs: 8000 },
 };
 
 /** Ordre d'affichage, qui est aussi l'ordre de déblocage dans l'histoire. */
@@ -57,9 +69,13 @@ export const POWER_ORDER: PowerId[] = [
   'glitch',
   'blackout',
   'virus',
+  'sonar',
+  'siphon',
+  'mirror',
+  'flip',
 ];
 
-export const NEGATIVE_EFFECTS: EffectId[] = ['freeze', 'glitch', 'blackout'];
+export const NEGATIVE_EFFECTS: EffectId[] = ['freeze', 'glitch', 'blackout', 'flip'];
 
 export const isAttack = (id: PowerId): id is AttackId => POWERS[id].kind === 'attack';
 
@@ -74,6 +90,8 @@ export const RULES = {
   systemAttackTravelMs: 2200,
   blackoutBoxes: 3,
   virusCells: 2,
+  /** Charge volée par un Siphon (au plus ce que possède la cible). */
+  siphonAmount: 30,
 
   /** Deux bons chiffres posés à moins de ce délai prolongent le combo. */
   comboWindowMs: 8000,

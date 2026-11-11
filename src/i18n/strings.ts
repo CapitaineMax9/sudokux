@@ -82,6 +82,9 @@ export const STRINGS = {
   'game.incoming': { fr: 'ATTAQUE ENTRANTE', en: 'INCOMING ATTACK' },
   'game.countermeasure': { fr: 'CONTRE-MESURE', en: 'COUNTERMEASURE' },
   'game.blocked': { fr: 'BLOQUÉ', en: 'BLOCKED' },
+  'game.reflected': { fr: 'RENVOYÉ', en: 'REFLECTED' },
+  'game.stolen': { fr: '+{n} CHARGE', en: '+{n} CHARGE' },
+  'game.drained': { fr: '−{n} CHARGE', en: '−{n} CHARGE' },
   'game.hit': { fr: 'TOUCHÉ', en: 'HIT' },
   'game.loading': { fr: 'Génération du Scellé…', en: 'Generating the Seal…' },
   'game.connecting': { fr: 'CONNEXION AU SCELLÉ', en: 'CONNECTING TO SEAL' },
@@ -225,6 +228,26 @@ export const STRINGS = {
   'power.virus.desc': {
     fr: "Efface deux chiffres déjà trouvés par l'adversaire.",
     en: 'Erases two digits your opponent already found.',
+  },
+  'power.sonar.name': { fr: 'Sonar', en: 'Sonar' },
+  'power.sonar.desc': {
+    fr: 'Fait briller pendant 10 secondes les cases que tu peux déduire tout de suite.',
+    en: 'For 10 seconds, lights up the cells you can work out right now.',
+  },
+  'power.siphon.name': { fr: 'Siphon', en: 'Siphon' },
+  'power.siphon.desc': {
+    fr: "Vole jusqu'à 30 points de charge à l'adversaire.",
+    en: 'Steals up to 30 charge from your opponent.',
+  },
+  'power.mirror.name': { fr: 'Miroir', en: 'Mirror' },
+  'power.mirror.desc': {
+    fr: "Renvoie la prochaine attaque reçue à celui qui l'a lancée. Dure 12 secondes.",
+    en: 'Sends the next incoming attack back to whoever cast it. Lasts 12 seconds.',
+  },
+  'power.flip.name': { fr: 'Vertige', en: 'Vertigo' },
+  'power.flip.desc': {
+    fr: 'Retourne la grille adverse tête en bas pendant 8 secondes. Les 6 et les 9 se ressemblent beaucoup…',
+    en: "Turns your opponent's grid upside down for 8 seconds. Sixes and nines look a lot alike…",
   },
 
   'settings.title': { fr: 'Réglages', en: 'Settings' },
