@@ -22,14 +22,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      # Configuration Firebase des duels par Internet (facultative), à renseigner dans
-      # Settings → Secrets and variables → Actions → onglet « Variables ».
-      EXPO_PUBLIC_FIREBASE_DATABASE_URL: ${{ vars.EXPO_PUBLIC_FIREBASE_DATABASE_URL }}
-      EXPO_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.EXPO_PUBLIC_FIREBASE_PROJECT_ID }}
-      EXPO_PUBLIC_FIREBASE_API_KEY: ${{ vars.EXPO_PUBLIC_FIREBASE_API_KEY }}
-      EXPO_PUBLIC_FIREBASE_APP_ID: ${{ vars.EXPO_PUBLIC_FIREBASE_APP_ID }}
-
+    # La configuration Firebase vient du fichier .env du dépôt.
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v5

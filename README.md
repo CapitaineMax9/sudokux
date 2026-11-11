@@ -92,10 +92,8 @@ sans perdre la progression.
 - Compter environ 20 minutes par compilation. Elle se suit dans l'onglet
   **Actions** (flux **APK Android**), d'où on peut aussi la relancer à la
   main (**Run workflow**, si le flux est sur la branche principale).
-- Pour activer les duels **Par Internet** dans cet APK : dans le dépôt,
-  **Settings → Secrets and variables → Actions → onglet Variables**, ajoute
-  `EXPO_PUBLIC_FIREBASE_DATABASE_URL` et `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
-  (les mêmes valeurs que dans `.env`), puis relance une compilation.
+- Les duels **Par Internet** utilisent la configuration du fichier `.env`
+  enregistré dans le dépôt.
 - Cet APK est signé avec la clé de test d'Expo, commune à tous les projets :
   parfait pour jouer entre amis, mais à remplacer par ta propre clé avant
   une publication sur le Play Store.
