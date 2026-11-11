@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { haptics } from '@/game/haptics';
 import { useT, type Lang } from '@/i18n';
 import { useLang, useProgress } from '@/store/progress';
+import { CloudSaveSection } from '@/ui/CloudSaveSection';
 import { NeonButton } from '@/ui/NeonButton';
 import { Panel } from '@/ui/Panel';
 import { Screen } from '@/ui/Screen';
@@ -104,6 +105,8 @@ export default function SettingsScreen() {
           />
         </View>
       </Panel>
+
+      <CloudSaveSection />
 
       <Panel color={C.red} style={styles.section}>
         <Txt variant="label" color={C.red} size={10}>

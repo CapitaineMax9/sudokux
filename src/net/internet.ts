@@ -50,7 +50,7 @@ export function internetAvailable(): boolean {
 
 let database: Database | null = null;
 
-function db(): Database {
+export function firebaseDb(): Database {
   if (database) return database;
   if (!env.databaseURL) throw new Error('Firebase non configuré');
   const app =
@@ -93,7 +93,7 @@ export interface InternetHost {
 
 /** Ouvre un salon et y branche la session de l'hôte. */
 export async function hostInternet(session: HostSession): Promise<InternetHost> {
-  const database = db();
+  const database = firebaseDb();
   let code = '';
   for (let attempt = 0; attempt < 8 && !code; attempt++) {
     const candidate = randomCode();
@@ -152,7 +152,7 @@ export async function hostInternet(session: HostSession): Promise<InternetHost> 
  * déjà complet.
  */
 export async function joinInternet(code: string, handlers: LinkHandlers): Promise<Link | null> {
-  const database = db();
+  const database = firebaseDb();
   const meta = ref(database, `rooms/${code}/meta`);
   // Première passe avec la valeur en cache (souvent vide) : on renvoie null pour
   // que Firebase compare avec le serveur et rappelle la fonction si besoin.
@@ -208,7 +208,7 @@ export async function joinInternet(code: string, handlers: LinkHandlers): Promis
  * sinon on s'inscrit avec notre propre salon et on attend (`wait`).
  */
 export async function claimQuickMatch(myCode: string): Promise<{ join: string } | { wait: true }> {
-  const queue = ref(db(), 'queue');
+  const queue = ref(firebaseDb(), 'queue');
   let taken: string | null = null;
   const result = await runTransaction(queue, (current) => {
     taken = null;
@@ -232,7 +232,7 @@ export async function claimQuickMatch(myCode: string): Promise<{ join: string } 
 
 /** Retire notre inscription à la partie rapide (si c'est toujours la nôtre). */
 export async function leaveQuickMatch(myCode: string): Promise<void> {
-  const queue = ref(db(), 'queue');
+  const queue = ref(firebaseDb(), 'queue');
   await onDisconnect(queue).cancel().catch(() => {});
   await runTransaction(queue, (current) =>
     current && current.code === myCode ? null : current,

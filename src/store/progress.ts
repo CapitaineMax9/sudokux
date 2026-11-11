@@ -14,21 +14,9 @@ import { LOADOUT_SIZE, POWERS, POWER_ORDER, type PowerId } from '@/engine/powers
 import { soloPowers } from '@/game/setup';
 import type { Lang } from '@/i18n/strings';
 
-export interface LevelRecord {
-  stars: number;
-  bestTimeMs: number | null;
-  bestScore: number;
-}
+import type { DuelRecord, FreeRecord, LevelRecord, SyncedProgress } from './cloudMerge';
 
-export interface FreeRecord {
-  wins: number;
-  bestTimeMs: number | null;
-}
-
-export interface DuelRecord {
-  wins: number;
-  losses: number;
-}
+export type { DuelRecord, FreeRecord, LevelRecord } from './cloudMerge';
 
 interface ProgressData {
   /** `null` = suivre la langue du téléphone. */
@@ -47,6 +35,8 @@ interface ProgressData {
   duels: Record<string, DuelRecord>;
   /** Pseudo affiché à l'adversaire en ligne. */
   playerName: string;
+  /** Code secret de la sauvegarde en ligne (`null` = pas encore créée). */
+  cloudKey: string | null;
 }
 
 export interface StoryOutcome {
@@ -61,6 +51,9 @@ interface ProgressActions {
   setLang: (lang: Lang) => void;
   setHaptics: (enabled: boolean) => void;
   setPlayerName: (name: string) => void;
+  /** Remplace la progression par celle venue du cloud (déjà fusionnée). */
+  applySynced: (data: SyncedProgress) => void;
+  setCloudKey: (key: string | null) => void;
   recordStory: (levelId: string, summary: MatchSummary) => StoryOutcome;
   recordFree: (key: string, summary: MatchSummary) => StoryOutcome;
   recordDuel: (botId: string, summary: MatchSummary) => StoryOutcome;
@@ -84,6 +77,7 @@ const INITIAL: ProgressData = {
   free: {},
   duels: {},
   playerName: `X-${1000 + Math.floor(Math.random() * 9000)}`,
+  cloudKey: null,
 };
 
 /** Expérience nécessaire pour atteindre chaque rang. */
@@ -125,6 +119,8 @@ export const useProgress = create<ProgressState>()(
       setLang: (lang) => set({ lang }),
       setHaptics: (haptics) => set({ haptics }),
       setPlayerName: (playerName) => set({ playerName }),
+      applySynced: (data) => set(data),
+      setCloudKey: (cloudKey) => set({ cloudKey }),
 
       recordStory: (levelId, summary) => {
         const state = get();
@@ -232,7 +228,15 @@ export const useProgress = create<ProgressState>()(
       },
 
       reset: () =>
-        set({ ...INITIAL, lang: get().lang, haptics: get().haptics, playerName: get().playerName }),
+        // On se détache aussi de la sauvegarde en ligne : sinon elle ramènerait
+        // aussitôt l'ancienne progression. Une nouvelle sera créée.
+        set({
+          ...INITIAL,
+          lang: get().lang,
+          haptics: get().haptics,
+          playerName: get().playerName,
+          cloudKey: null,
+        }),
     }),
     {
       name: 'sudokux-progress-v1',
@@ -249,6 +253,7 @@ export const useProgress = create<ProgressState>()(
         free: state.free,
         duels: state.duels,
         playerName: state.playerName,
+        cloudKey: state.cloudKey,
       }),
     },
   ),

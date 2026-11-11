@@ -30,6 +30,16 @@
           ".validate": false
         }
       }
+    },
+    "saves": {
+      "$code": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$code.length === 12 && newData.child('d').isString() && newData.child('d').val().length < 200000 && newData.child('at').isNumber() && newData.child('v').isNumber()",
+        "$other": {
+          ".validate": "$other === 'd' || $other === 'at' || $other === 'v'"
+        }
+      }
     }
   }
 }

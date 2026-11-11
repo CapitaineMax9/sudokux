@@ -321,6 +321,38 @@ export const STRINGS = {
   },
 
   'settings.title': { fr: 'Réglages', en: 'Settings' },
+  'cloud.title': { fr: 'Sauvegarde en ligne', en: 'Cloud save' },
+  'cloud.off': {
+    fr: "Pas encore configurée (il faut le projet Firebase, voir le README).",
+    en: 'Not set up yet (needs the Firebase project, see the README).',
+  },
+  'cloud.syncing': { fr: 'Synchronisation…', en: 'Syncing…' },
+  'cloud.synced': { fr: 'Progression sauvegardée en ligne', en: 'Progress saved online' },
+  'cloud.offline': {
+    fr: 'Hors ligne : la sauvegarde partira dès le retour du réseau.',
+    en: 'Offline: your save will be uploaded when the network is back.',
+  },
+  'cloud.code': { fr: 'Ton code de sauvegarde', en: 'Your save code' },
+  'cloud.codeHint': {
+    fr: "Note-le bien et ne le donne à personne : il permet de retrouver ta progression sur un autre téléphone, sur iPhone ou après une réinstallation.",
+    en: 'Write it down and keep it to yourself: it brings your progress back on another phone, on iPhone, or after reinstalling.',
+  },
+  'cloud.copy': { fr: 'Copier', en: 'Copy' },
+  'cloud.copied': { fr: 'Copié !', en: 'Copied!' },
+  'cloud.retry': { fr: 'Synchroniser', en: 'Sync now' },
+  'cloud.restore': { fr: 'Récupérer une sauvegarde', en: 'Restore a save' },
+  'cloud.restoreHint': {
+    fr: 'Tape le code noté sur ton autre appareil. Les deux progressions sont réunies : rien n’est perdu.',
+    en: 'Enter the code from your other device. Both progressions are combined: nothing is lost.',
+  },
+  'cloud.restoreButton': { fr: 'Récupérer', en: 'Restore' },
+  'cloud.linked': { fr: 'Sauvegarde récupérée !', en: 'Save restored!' },
+  'cloud.notFound': { fr: 'Aucune sauvegarde avec ce code.', en: 'No save with this code.' },
+  'cloud.badCode': { fr: 'Le code doit faire 12 caractères.', en: 'The code must be 12 characters long.' },
+  'cloud.offlineError': {
+    fr: "Pas de connexion à Internet. Réessaie plus tard.",
+    en: 'No Internet connection. Try again later.',
+  },
   'settings.language': { fr: 'Langue', en: 'Language' },
   'settings.haptics': { fr: 'Vibrations', en: 'Haptics' },
   'settings.hapticsHint': {
@@ -329,8 +361,8 @@ export const STRINGS = {
   },
   'settings.reset': { fr: 'Effacer la progression', en: 'Erase progress' },
   'settings.resetConfirm': {
-    fr: 'Tout effacer ? Missions, pouvoirs et records seront perdus.',
-    en: 'Erase everything? Missions, powers and records will be lost.',
+    fr: "Tout effacer ? Missions, pouvoirs et records seront perdus, et cet appareil recevra un nouveau code de sauvegarde.",
+    en: 'Erase everything? Missions, powers and records will be lost, and this device will get a new save code.',
   },
   'settings.resetYes': { fr: 'Tout effacer', en: 'Erase all' },
   'settings.version': { fr: 'Version {v} · prototype', en: 'Version {v} · prototype' },

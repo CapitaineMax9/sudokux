@@ -75,6 +75,22 @@ Ces valeurs ne sont pas secrètes : tu peux enregistrer le fichier `.env` dans
 le dépôt, ce qui est même nécessaire pour que les compilations dans le cloud
 (ci-dessous) en profitent.
 
+## Sauvegarde en ligne
+
+La progression est enregistrée sur l'appareil et, dès que Firebase est
+configuré, **aussi en ligne**, automatiquement. Chaque joueur a un **code de
+sauvegarde** de 12 caractères (**Réglages → Sauvegarde en ligne**). Pour
+retrouver sa progression sur un autre téléphone, sur iPhone ou après une
+réinstallation : **Réglages → Récupérer une sauvegarde**, puis taper ce code.
+Les deux progressions sont alors réunies (plus d'étoiles, meilleurs temps,
+pouvoirs cumulés) et restent synchronisées.
+
+Le code fait office de mot de passe : quiconque le connaît peut lire et
+modifier la sauvegarde. Sont synchronisés : missions, records, pouvoirs,
+équipements, expérience et bilan des duels. La langue, les vibrations et le
+pseudo restent propres à chaque appareil. « Effacer la progression » détache
+l'appareil de sa sauvegarde en ligne et lui donne un nouveau code.
+
 ## Installer le jeu gratuitement
 
 Le **Play Store** coûte 25 $ (une seule fois) et l'**App Store** 99 $ par an :
@@ -279,7 +295,7 @@ pourrait tricher en modifiant la sienne.
 
 ## Ce qui a été vérifié
 
-- 160 tests automatiques : moteur, pouvoirs, mode en ligne, arbitrage,
+- 167 tests automatiques : moteur, pouvoirs, mode en ligne, arbitrage,
   duels sur le réseau local avec de vraies connexions TCP, contenu de
   l'histoire.
 - Les duels **Par Internet** ont été joués de bout en bout entre deux

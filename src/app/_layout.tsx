@@ -15,6 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { installDevtools } from '@/game/devtools';
+import { startCloudSync } from '@/net/cloudSave';
 import { useProgressReady } from '@/store/progress';
 import { C } from '@/ui/theme';
 
@@ -45,6 +46,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+
+  // Sauvegarde en ligne : dès que la sauvegarde locale est chargée.
+  useEffect(() => {
+    if (progressReady) startCloudSync();
+  }, [progressReady]);
 
   if (!ready) return null;
 
