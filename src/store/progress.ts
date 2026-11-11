@@ -10,7 +10,8 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import { ALL_LEVELS, getLevel, previousLevelId } from '@/content/story';
 import type { MatchSummary } from '@/engine/match';
-import { LOADOUT_SIZE, POWER_ORDER, type PowerId } from '@/engine/powers';
+import { LOADOUT_SIZE, POWERS, POWER_ORDER, type PowerId } from '@/engine/powers';
+import { soloPowers } from '@/game/setup';
 import type { Lang } from '@/i18n/strings';
 
 export interface LevelRecord {
@@ -38,6 +39,8 @@ interface ProgressData {
   powers: PowerId[];
   /** Pouvoirs emportés en duel. */
   loadout: PowerId[];
+  /** Pouvoirs emportés en solo (vide = les premiers débloqués). */
+  soloLoadout: PowerId[];
   /** Pouvoirs débloqués que le joueur n'a pas encore vus dans l'écran Pouvoirs. */
   freshPowers: PowerId[];
   free: Record<string, FreeRecord>;
@@ -62,7 +65,7 @@ interface ProgressActions {
   recordFree: (key: string, summary: MatchSummary) => StoryOutcome;
   recordDuel: (botId: string, summary: MatchSummary) => StoryOutcome;
   /** Équipe ou retire un pouvoir. Renvoie `false` si l'équipement est plein. */
-  toggleLoadout: (power: PowerId) => boolean;
+  toggleLoadout: (power: PowerId, mode?: 'solo' | 'duel') => boolean;
   markPowersSeen: () => void;
   reset: () => void;
 }
@@ -76,6 +79,7 @@ const INITIAL: ProgressData = {
   levels: {},
   powers: [],
   loadout: [],
+  soloLoadout: [],
   freshPowers: [],
   free: {},
   duels: {},
@@ -146,6 +150,14 @@ export const useProgress = create<ProgressState>()(
             patch.powers = POWER_ORDER.filter((p) => p === reward || state.powers.includes(p));
             patch.freshPowers = [...state.freshPowers, reward];
             if (state.loadout.length < LOADOUT_SIZE) patch.loadout = [...state.loadout, reward];
+            // Un équipement solo déjà choisi accueille le nouveau pouvoir s'il reste de la place.
+            if (
+              POWERS[reward].kind !== 'attack' &&
+              state.soloLoadout.length > 0 &&
+              state.soloLoadout.length < LOADOUT_SIZE
+            ) {
+              patch.soloLoadout = [...state.soloLoadout, reward];
+            }
           }
         }
 
@@ -190,8 +202,22 @@ export const useProgress = create<ProgressState>()(
         return { unlocked: null, rankBefore, rankAfter: rankOf(xp), firstClear: false };
       },
 
-      toggleLoadout: (power) => {
-        const { loadout, powers } = get();
+      toggleLoadout: (power, mode = 'duel') => {
+        const { loadout, soloLoadout, powers } = get();
+        if (mode === 'solo') {
+          if (POWERS[power].kind === 'attack') return false;
+          // On part de l'équipement effectif (le choix automatique s'il n'y en a pas encore).
+          const current = soloPowers({ powers, soloLoadout });
+          if (current.includes(power)) {
+            // Il faut garder au moins un pouvoir, sinon le choix automatique reviendrait.
+            if (current.length === 1) return false;
+            set({ soloLoadout: current.filter((p) => p !== power) });
+            return true;
+          }
+          if (!powers.includes(power) || current.length >= LOADOUT_SIZE) return false;
+          set({ soloLoadout: [...current, power] });
+          return true;
+        }
         if (loadout.includes(power)) {
           set({ loadout: loadout.filter((p) => p !== power) });
           return true;
@@ -218,6 +244,7 @@ export const useProgress = create<ProgressState>()(
         levels: state.levels,
         powers: state.powers,
         loadout: state.loadout,
+        soloLoadout: state.soloLoadout,
         freshPowers: state.freshPowers,
         free: state.free,
         duels: state.duels,

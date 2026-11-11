@@ -717,8 +717,11 @@ export function previousLevelId(id: string): string | null {
   return index > 0 ? ORDERED_LEVELS[index - 1].id : null;
 }
 
-/** Numéro de la mission qui débloque un pouvoir (pour l'écran Pouvoirs). */
-export function unlockMissionOf(power: PowerId): number | null {
-  const level = ORDERED_LEVELS.find((candidate) => candidate.reward === power);
-  return level ? level.number : null;
+/** Chapitre et mission qui débloquent un pouvoir (pour l'écran Pouvoirs). */
+export function unlockMissionOf(power: PowerId): { chapter: number; number: number } | null {
+  for (const chapter of CHAPTERS) {
+    const level = chapter.levels.find((candidate) => candidate.reward === power);
+    if (level) return { chapter: chapter.number, number: level.number };
+  }
+  return null;
 }

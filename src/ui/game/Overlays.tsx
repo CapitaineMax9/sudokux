@@ -114,8 +114,24 @@ export const Announcer = memo(function Announcer() {
             show({ text: t('game.blocked'), color: C.red, icon: 'shield' });
           }
           break;
+        case 'attackReflected':
+          // Renvoyée par notre Miroir (bonne nouvelle) ou par celui d'en face.
+          if (event.attack.target === 'player') haptics.success();
+          show({
+            text: t('game.reflected'),
+            color: event.attack.target === 'player' ? C.silver : C.red,
+            icon: 'mirror',
+          });
+          break;
         case 'attackHit':
-          if (event.attack.target === 'opponent') {
+          if (event.attack.power === 'siphon' && event.amount > 0) {
+            const mine = event.attack.target === 'opponent';
+            show({
+              text: t(mine ? 'game.stolen' : 'game.drained', { n: event.amount }),
+              color: mine ? C.lime : C.red,
+              icon: 'siphon',
+            });
+          } else if (event.attack.target === 'opponent') {
             show({ text: t('game.hit'), color: POWER_COLORS[event.attack.power], icon: event.attack.power });
           }
           break;

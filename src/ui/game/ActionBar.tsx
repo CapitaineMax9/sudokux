@@ -64,8 +64,9 @@ const PowerButton = memo(function PowerButton({ power, charge }: PowerButtonProp
   const def = POWERS[power];
   const color = POWER_COLORS[power];
   const ready = charge >= def.cost;
-  // Le Pare-feu reste allumé tant qu'il protège le joueur.
-  const shieldUp = useHasEffect('player', 'shield') && power === 'shield';
+  // Pare-feu, Miroir et Sonar restent allumés tant qu'ils agissent.
+  const lasting = power === 'shield' || power === 'mirror' || power === 'sonar';
+  const shieldUp = useHasEffect('player', lasting ? power : 'shield') && lasting;
   const pulse = useSharedValue(0);
 
   useEffect(() => {

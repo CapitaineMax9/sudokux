@@ -187,8 +187,8 @@ export default function PlayScreen() {
   /** Prépare une partie neuve. `withStory` = rejouer aussi les dialogues et consignes. */
   const begin = useCallback(
     (withStory: boolean) => {
-      const { powers, loadout } = useProgress.getState();
-      const player = { powers, loadout };
+      const { powers, loadout, soloLoadout } = useProgress.getState();
+      const player = { powers, loadout, soloLoadout };
       const seed = seedParam && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined;
 
       let next: MatchSetup | null;

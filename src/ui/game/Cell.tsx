@@ -4,6 +4,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withRepeat,
   withSequence,
   withSpring,
   withTiming,
@@ -42,6 +43,16 @@ function scramble(a: number, b: number, c: number): number {
  */
 const ignorePress = () => {};
 
+/** Halo qui pulse sur une case désignée par le Sonar. */
+function SonarPing() {
+  const pulse = useSharedValue(0);
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(1, { duration: 600 }), -1, true);
+  }, [pulse]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.25 + pulse.value * 0.5 }));
+  return <Animated.View pointerEvents="none" style={[FILL, styles.ping, style]} />;
+}
+
 interface CellProps {
   index: number;
   size: number;
@@ -78,6 +89,13 @@ export const Cell = memo(function Cell({
     const digit = match.player.values[match.selected];
     return digit !== 0 && match.player.notes[index] & (1 << (digit - 1)) ? digit : 0;
   }, 0);
+
+  // Case désignée par le Sonar : on peut la déduire tout de suite.
+  const pinged = useMatch((match) => {
+    if (match.player.values[index] !== 0) return false;
+    const sonar = match.player.effects.find((effect) => effect.id === 'sonar');
+    return sonar !== undefined && sonar.cells.includes(index);
+  }, false);
 
   const [wrong, setWrong] = useState<number | null>(null);
   const [flashColor, setFlashColor] = useState<string>(C.cyan);
@@ -233,6 +251,7 @@ export const Cell = memo(function Cell({
         pointerEvents="none"
         style={[FILL, { backgroundColor: flashColor }, flashStyle]}
       />
+      {pinged ? <SonarPing /> : null}
       {selected ? <View pointerEvents="none" style={[FILL, styles.ring]} /> : null}
       <Animated.View pointerEvents="none" style={[styles.center, contentStyle]}>
         {content}
@@ -269,5 +288,10 @@ const styles = StyleSheet.create({
   ring: {
     borderWidth: 2,
     borderColor: C.magenta,
+  },
+  ping: {
+    backgroundColor: alpha(C.teal, 0.45),
+    borderWidth: 1.5,
+    borderColor: C.teal,
   },
 });

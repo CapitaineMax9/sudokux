@@ -139,13 +139,24 @@ function BlackoutPanel({ left, top, size }: { left: number; top: number; size: n
   );
 }
 
-function ShieldRing() {
+/** Anneau lumineux autour de la grille : vert pour le Pare-feu, argent pour le Miroir. */
+function GuardRing({ color, inset = 0 }: { color: string; inset?: number }) {
   const pulse = useSharedValue(0);
   useEffect(() => {
     pulse.value = withRepeat(withTiming(1, { duration: 800 }), -1, true);
   }, [pulse]);
   const style = useAnimatedStyle(() => ({ opacity: 0.55 + pulse.value * 0.45 }));
-  return <Animated.View pointerEvents="none" style={[styles.shield, style]} />;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.shield,
+        { borderColor: color, left: inset, right: inset, top: inset, bottom: inset },
+        glow(color, 14, 0.8),
+        style,
+      ]}
+    />
+  );
 }
 
 interface BoardProps {
@@ -159,6 +170,8 @@ export const Board = memo(function Board({ maxSize }: BoardProps) {
   const glitchSeed = useGlitchSeed('player');
   const freezeUntil = useEffectUntil('player', 'freeze');
   const shielded = useHasEffect('player', 'shield');
+  const mirrored = useHasEffect('player', 'mirror');
+  const flipped = useHasEffect('player', 'flip');
   const stunned = useMatch((match) => match.player.stunnedUntil > match.now, false);
 
   const metrics = useMemo(() => boardMetrics(maxSize), [maxSize]);
@@ -215,12 +228,20 @@ export const Board = memo(function Board({ maxSize }: BoardProps) {
     };
   }, [metrics.cell, shake]);
 
-  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
+  // Vertige : la grille bascule tête en bas, puis revient.
+  const turn = useSharedValue(0);
+  useEffect(() => {
+    turn.value = withTiming(flipped ? 1 : 0, { duration: 450, easing: Easing.inOut(Easing.cubic) });
+  }, [flipped, turn]);
+
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shake.value }, { rotate: `${turn.value * 180}deg` }],
+  }));
 
   if (!puzzle) return null;
   const xSeal = puzzle.variant === 'x';
   const boxStep = metrics.box + BOX_GAP;
-  const frame = shielded ? C.green : stunned ? C.red : C.cyan;
+  const frame = flipped ? C.coral : shielded ? C.green : stunned ? C.red : C.cyan;
 
   return (
     <Animated.View
@@ -303,7 +324,8 @@ export const Board = memo(function Board({ maxSize }: BoardProps) {
       )}
 
       {freezeUntil > 0 ? <FreezeOverlay until={freezeUntil} /> : null}
-      {shielded ? <ShieldRing /> : null}
+      {shielded ? <GuardRing color={C.green} /> : null}
+      {mirrored ? <GuardRing color={C.silver} inset={shielded ? 5 : 0} /> : null}
       {floaters.map((floater) => (
         <FloatingPoints key={floater.id} floater={floater} />
       ))}
@@ -373,10 +395,8 @@ const styles = StyleSheet.create({
     borderColor: alpha(C.indigo, 0.6),
   },
   shield: {
-    ...FILL,
+    position: 'absolute',
     borderWidth: 3,
-    borderColor: C.green,
     borderRadius: 4,
-    ...glow(C.green, 14, 0.8),
   },
 });

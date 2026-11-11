@@ -26,18 +26,26 @@ export interface MatchSetup {
   rival: string | null;
 }
 
-interface PlayerPowers {
+export interface PlayerPowers {
   powers: PowerId[];
+  /** Équipement de duel. */
   loadout: PowerId[];
+  /** Équipement solo (vide = choix automatique). */
+  soloLoadout: PowerId[];
 }
 
-/** En solo : tous les pouvoirs débloqués qui ne visent pas un adversaire. */
-export function soloPowers(unlocked: PowerId[]): PowerId[] {
-  return POWER_ORDER.filter((p) => unlocked.includes(p) && POWERS[p].kind !== 'attack');
+/**
+ * En solo : l'équipement choisi parmi les pouvoirs qui ne visent pas un
+ * adversaire, ou à défaut les premiers débloqués.
+ */
+export function soloPowers({ powers, soloLoadout }: Omit<PlayerPowers, 'loadout'>): PowerId[] {
+  const usable = POWER_ORDER.filter((p) => powers.includes(p) && POWERS[p].kind !== 'attack');
+  const chosen = usable.filter((p) => soloLoadout.includes(p)).slice(0, LOADOUT_SIZE);
+  return chosen.length > 0 ? chosen : usable.slice(0, LOADOUT_SIZE);
 }
 
 /** En duel : l'équipement choisi, ou à défaut les premiers pouvoirs débloqués. */
-export function duelPowers({ powers, loadout }: PlayerPowers): PowerId[] {
+export function duelPowers({ powers, loadout }: Omit<PlayerPowers, 'soloLoadout'>): PowerId[] {
   const chosen = loadout.filter((p) => powers.includes(p)).slice(0, LOADOUT_SIZE);
   if (chosen.length > 0) return POWER_ORDER.filter((p) => chosen.includes(p));
   return POWER_ORDER.filter((p) => powers.includes(p)).slice(0, LOADOUT_SIZE);
@@ -65,7 +73,7 @@ export function buildStoryMatch(levelId: string, player: PlayerPowers): MatchSet
       puzzle,
       // Le hasard de la partie (IA, attaques) change à chaque tentative.
       seed: randomSeed(),
-      powers: duel ? duelPowers(player) : soloPowers(player.powers),
+      powers: duel ? duelPowers(player) : soloPowers(player),
       maxMistakes: level.maxMistakes,
       timeLimitMs: level.timeLimitMs,
       countermeasures: level.countermeasures,
@@ -91,7 +99,7 @@ export function buildFreeMatch(
       mode: 'solo',
       puzzle: generatePuzzle({ seed, difficulty, variant }),
       seed: (seed ^ hashString('free')) >>> 0,
-      powers: soloPowers(player.powers),
+      powers: soloPowers(player),
       maxMistakes: RULES.defaultMaxMistakes,
       timeLimitMs: null,
       countermeasures: null,

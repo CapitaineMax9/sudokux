@@ -6,6 +6,7 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { unlockMissionOf } from '@/content/story';
 import { LOADOUT_SIZE, POWERS, POWER_ORDER, type PowerId } from '@/engine/powers';
 import { haptics } from '@/game/haptics';
+import { soloPowers } from '@/game/setup';
 import { useT } from '@/i18n';
 import { useProgress } from '@/store/progress';
 import { Icon } from '@/ui/Icon';
@@ -20,7 +21,11 @@ export default function PowersScreen() {
   const router = useRouter();
   const t = useT();
   const unlocked = useProgress((state) => state.powers);
-  const loadout = useProgress((state) => state.loadout);
+  const duelLoadout = useProgress((state) => state.loadout);
+  const soloLoadout = useProgress((state) => state.soloLoadout);
+  const [mode, setMode] = useState<'solo' | 'duel'>('duel');
+  const loadout =
+    mode === 'solo' ? soloPowers({ powers: unlocked, soloLoadout }) : duelLoadout;
   const toggleLoadout = useProgress((state) => state.toggleLoadout);
   // On garde la liste des nouveautés telle qu'elle était à l'ouverture de l'écran.
   const [fresh] = useState<PowerId[]>(() => useProgress.getState().freshPowers);
@@ -37,7 +42,7 @@ export default function PowersScreen() {
   }, [full]);
 
   const onToggle = (power: PowerId) => {
-    if (toggleLoadout(power)) {
+    if (toggleLoadout(power, mode)) {
       haptics.medium();
       setFull(false);
     } else {
@@ -48,10 +53,41 @@ export default function PowersScreen() {
 
   return (
     <Screen title={t('powers.title')} onBack={() => router.back()} scroll tint={C.yellow}>
+      <View style={styles.modes}>
+        {(['duel', 'solo'] as const).map((id) => {
+          const active = mode === id;
+          return (
+            <Pressable
+              key={id}
+              testID={`loadout-${id}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => {
+                haptics.tap();
+                setMode(id);
+                setFull(false);
+              }}
+              style={[
+                styles.mode,
+                {
+                  borderColor: alpha(C.yellow, active ? 1 : 0.3),
+                  backgroundColor: alpha(C.yellow, active ? 0.16 : 0.04),
+                },
+                active ? glow(C.yellow, 10, 0.4) : null,
+              ]}>
+              <Icon name={id === 'duel' ? 'duel' : 'grid'} size={18} color={active ? C.yellow : C.textDim} />
+              <Txt variant="title" color={active ? C.yellow : C.textDim} size={13}>
+                {t(`powers.mode.${id}`).toUpperCase()}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Panel color={C.yellow} style={styles.loadout}>
         <View style={styles.loadoutHead}>
           <Txt variant="label" color={C.yellow} size={10}>
-            {t('powers.loadout')}
+            {t(mode === 'solo' ? 'powers.loadoutSolo' : 'powers.loadout')}
           </Txt>
           <Txt variant="num" color={C.yellow} size={15}>
             {loadout.length} / {LOADOUT_SIZE}
@@ -89,7 +125,7 @@ export default function PowersScreen() {
           })}
         </View>
         <Txt variant="small" color={C.textDim}>
-          {t('powers.hint')}
+          {t(mode === 'solo' ? 'powers.hintSolo' : 'powers.hint')}
         </Txt>
         {full ? (
           <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(200)}>
@@ -103,7 +139,8 @@ export default function PowersScreen() {
       <View style={styles.list}>
         {POWER_ORDER.map((power) => {
           const def = POWERS[power];
-          const owned = unlocked.includes(power);
+          const usable = mode === 'duel' || def.kind !== 'attack';
+          const owned = unlocked.includes(power) && usable;
           const equipped = loadout.includes(power);
           const color = owned ? POWER_COLORS[power] : C.textMuted;
           const mission = unlockMissionOf(power);
@@ -126,7 +163,11 @@ export default function PowersScreen() {
                   styles.iconBox,
                   { borderColor: alpha(color, 0.8), backgroundColor: alpha(color, owned ? 0.12 : 0.04) },
                 ]}>
-                <Icon name={owned ? power : 'lock'} size={owned ? 30 : 22} color={color} />
+                <Icon
+                  name={unlocked.includes(power) ? power : 'lock'}
+                  size={unlocked.includes(power) ? 30 : 22}
+                  color={color}
+                />
               </View>
               <View style={styles.cardText}>
                 <View style={styles.titleRow}>
@@ -168,9 +209,13 @@ export default function PowersScreen() {
                     ]}>
                     {equipped ? <Icon name="check" size={16} color={C.bg} strokeWidth={2.6} /> : null}
                   </View>
+                ) : unlocked.includes(power) ? (
+                  <Txt variant="label" color={C.textMuted} size={8} center>
+                    {t('powers.duelOnly')}
+                  </Txt>
                 ) : mission !== null ? (
                   <Txt variant="label" color={C.textMuted} size={8} center>
-                    {t('powers.unlockAt', { n: mission })}
+                    {t('powers.unlockAt', { c: mission.chapter, n: mission.number })}
                   </Txt>
                 ) : null}
               </View>
@@ -183,6 +228,21 @@ export default function PowersScreen() {
 }
 
 const styles = StyleSheet.create({
+  modes: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  mode: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 44,
+    borderWidth: 1.5,
+    borderRadius: 6,
+  },
   loadout: {
     gap: 10,
   },
