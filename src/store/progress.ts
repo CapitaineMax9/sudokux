@@ -42,6 +42,8 @@ interface ProgressData {
   freshPowers: PowerId[];
   free: Record<string, FreeRecord>;
   duels: Record<string, DuelRecord>;
+  /** Pseudo affiché à l'adversaire en ligne. */
+  playerName: string;
 }
 
 export interface StoryOutcome {
@@ -55,6 +57,7 @@ export interface StoryOutcome {
 interface ProgressActions {
   setLang: (lang: Lang) => void;
   setHaptics: (enabled: boolean) => void;
+  setPlayerName: (name: string) => void;
   recordStory: (levelId: string, summary: MatchSummary) => StoryOutcome;
   recordFree: (key: string, summary: MatchSummary) => StoryOutcome;
   recordDuel: (botId: string, summary: MatchSummary) => StoryOutcome;
@@ -76,6 +79,7 @@ const INITIAL: ProgressData = {
   freshPowers: [],
   free: {},
   duels: {},
+  playerName: `X-${1000 + Math.floor(Math.random() * 9000)}`,
 };
 
 /** Expérience nécessaire pour atteindre chaque rang. */
@@ -116,6 +120,7 @@ export const useProgress = create<ProgressState>()(
 
       setLang: (lang) => set({ lang }),
       setHaptics: (haptics) => set({ haptics }),
+      setPlayerName: (playerName) => set({ playerName }),
 
       recordStory: (levelId, summary) => {
         const state = get();
@@ -200,7 +205,8 @@ export const useProgress = create<ProgressState>()(
         if (get().freshPowers.length > 0) set({ freshPowers: [] });
       },
 
-      reset: () => set({ ...INITIAL, lang: get().lang, haptics: get().haptics }),
+      reset: () =>
+        set({ ...INITIAL, lang: get().lang, haptics: get().haptics, playerName: get().playerName }),
     }),
     {
       name: 'sudokux-progress-v1',
@@ -215,6 +221,7 @@ export const useProgress = create<ProgressState>()(
         freshPowers: state.freshPowers,
         free: state.free,
         duels: state.duels,
+        playerName: state.playerName,
       }),
     },
   ),

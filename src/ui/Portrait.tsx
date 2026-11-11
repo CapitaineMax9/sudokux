@@ -23,6 +23,8 @@ interface PortraitProps {
   size?: number;
   /** Portrait grisé (personnage pas encore rencontré). */
   dimmed?: boolean;
+  /** Couleur imposée (par ex. pour un joueur en ligne). */
+  tint?: string;
 }
 
 const FRAME = '14,2 86,2 98,14 98,86 86,98 14,98 2,86 2,14';
@@ -31,8 +33,13 @@ const FRAME = '14,2 86,2 98,14 98,86 86,98 14,98 2,86 2,14';
  * Portraits « hologramme » des personnages, dessinés au trait dans la
  * couleur néon de chacun. Tout est vectoriel : aucune image à charger.
  */
-export const Portrait = memo(function Portrait({ who, size = 96, dimmed = false }: PortraitProps) {
-  const color = dimmed ? C.textMuted : CHARACTERS[who].color;
+export const Portrait = memo(function Portrait({
+  who,
+  size = 96,
+  dimmed = false,
+  tint,
+}: PortraitProps) {
+  const color = dimmed ? C.textMuted : (tint ?? CHARACTERS[who].color);
   const line = {
     stroke: color,
     strokeWidth: 2.2,
@@ -228,7 +235,7 @@ export const Portrait = memo(function Portrait({ who, size = 96, dimmed = false 
 
   // Identifiants uniques par personnage et par état (voir Backdrop.tsx).
   const clipId = `portrait-clip-${who}`;
-  const gradId = `portrait-grad-${who}-${dimmed ? 'off' : 'on'}`;
+  const gradId = `portrait-grad-${who}-${color.replace('#', '')}`;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">

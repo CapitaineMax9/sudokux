@@ -139,20 +139,37 @@ export default function DuelScreen() {
           );
         })}
 
-        <View style={[styles.card, styles.online]}>
+        <Pressable
+          testID="duel-online"
+          accessibilityRole="button"
+          accessibilityLabel={t('duel.online')}
+          onPress={() => {
+            haptics.tap();
+            router.push('/online');
+          }}
+          style={({ pressed }) => [
+            styles.card,
+            styles.online,
+            { borderColor: alpha(C.coral, 0.7), opacity: pressed ? 0.75 : 1 },
+          ]}>
           <View style={styles.onlineIcon}>
-            <Icon name="globe" size={30} color={C.textMuted} />
+            <Icon name="globe" size={30} color={C.coral} />
           </View>
           <View style={styles.cardText}>
-            <Txt variant="heading" color={C.textMuted} size={16}>
+            <Txt variant="heading" color={C.coral} glow={6} size={16}>
               {t('duel.online').toUpperCase()}
             </Txt>
-            <Txt variant="small" color={C.textMuted}>
+            <Txt variant="small" color={C.textDim}>
               {t('duel.onlineSoon')}
             </Txt>
           </View>
-          <Icon name="lock" size={20} color={C.textMuted} />
-        </View>
+          <View style={styles.record}>
+            <Txt variant="num" color={C.textDim} size={14}>
+              {t('duel.record', { w: records.online?.wins ?? 0, l: records.online?.losses ?? 0 })}
+            </Txt>
+            <Icon name="duel" size={20} color={C.coral} />
+          </View>
+        </Pressable>
       </View>
     </Screen>
   );
@@ -213,9 +230,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   online: {
-    borderColor: alpha(C.textMuted, 0.3),
-    borderStyle: 'dashed',
-    paddingRight: 14,
+    paddingRight: 10,
   },
   onlineIcon: {
     width: 70,

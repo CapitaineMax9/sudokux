@@ -10,10 +10,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { CHARACTERS } from '@/content/characters';
 import type { MatchSummary } from '@/engine/match';
 import { POWERS } from '@/engine/powers';
 import { haptics } from '@/game/haptics';
+import { rivalOf } from '@/game/rival';
 import type { MatchSetup } from '@/game/setup';
 import { formatNumber, formatTime, useL, useT, type StringKey } from '@/i18n';
 import { RANK_THRESHOLDS, rankOf, rankProgress, type StoryOutcome } from '@/store/progress';
@@ -107,9 +107,9 @@ export function ResultView({
   const color = won ? (duel ? C.magenta : C.cyan) : C.red;
   const titleKey: StringKey = won ? (duel ? 'result.winDuel' : 'result.winSolo') : 'result.lose';
 
-  const botName = setup.bot ? l(CHARACTERS[setup.bot.character].name) : '';
+  const botName = rivalOf(setup, l)?.name ?? '';
   const reason =
-    !won && summary.reason && summary.reason !== 'solved'
+    summary.reason === 'forfeit' || (!won && summary.reason && summary.reason !== 'solved')
       ? t(`reason.${summary.reason}` as StringKey, { name: botName })
       : null;
 

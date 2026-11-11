@@ -12,7 +12,8 @@ import { generatePuzzle, type Difficulty, type Variant } from '@/engine/sudoku';
 export type MatchMeta =
   | { kind: 'story'; levelId: string }
   | { kind: 'free'; difficulty: Difficulty; variant: Variant }
-  | { kind: 'duel'; botId: string };
+  | { kind: 'duel'; botId: string }
+  | { kind: 'online' };
 
 export interface MatchSetup {
   meta: MatchMeta;
@@ -21,6 +22,8 @@ export interface MatchSetup {
   parTimeMs: number;
   level: StoryLevel | null;
   bot: BotProfile | null;
+  /** Pseudo de l'adversaire humain (duel en ligne). */
+  rival: string | null;
 }
 
 interface PlayerPowers {
@@ -55,6 +58,7 @@ export function buildStoryMatch(levelId: string, player: PlayerPowers): MatchSet
     meta: { kind: 'story', levelId },
     level,
     bot,
+    rival: null,
     parTimeMs: level.parTimeMs,
     config: {
       mode: duel ? 'duel' : 'solo',
@@ -81,6 +85,7 @@ export function buildFreeMatch(
     meta: { kind: 'free', difficulty, variant },
     level: null,
     bot: null,
+    rival: null,
     parTimeMs: PAR_TIME_MS[difficulty],
     config: {
       mode: 'solo',
@@ -107,6 +112,7 @@ export function buildDuelMatch(
     meta: { kind: 'duel', botId },
     level: null,
     bot,
+    rival: null,
     parTimeMs: PAR_TIME_MS[bot.puzzle.difficulty],
     config: {
       mode: 'duel',
@@ -118,6 +124,31 @@ export function buildDuelMatch(
       countermeasures: null,
       bot: bot.config,
       remote: false,
+    },
+  };
+}
+
+/** Duel en ligne : la grille vient de la graine envoyée par le serveur. */
+export function buildOnlineMatch(
+  found: { seed: number; puzzle: { difficulty: Difficulty; clues: number; variant: Variant }; opponent: string },
+  player: PlayerPowers,
+): MatchSetup {
+  return {
+    meta: { kind: 'online' },
+    level: null,
+    bot: null,
+    rival: found.opponent,
+    parTimeMs: PAR_TIME_MS[found.puzzle.difficulty],
+    config: {
+      mode: 'duel',
+      puzzle: generatePuzzle({ seed: found.seed, ...found.puzzle }),
+      seed: (found.seed ^ hashString('online')) >>> 0,
+      powers: duelPowers(player),
+      maxMistakes: null,
+      timeLimitMs: null,
+      countermeasures: null,
+      bot: null,
+      remote: true,
     },
   };
 }

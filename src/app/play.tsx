@@ -16,14 +16,17 @@ import { summarizeMatch, type MatchSummary } from '@/engine/match';
 import type { Difficulty, Variant } from '@/engine/sudoku';
 import { matchEvents } from '@/game/events';
 import { useStayAwake } from '@/game/keepAwake';
+import { rivalOf } from '@/game/rival';
 import {
   buildDuelMatch,
   buildFreeMatch,
+  buildOnlineMatch,
   buildStoryMatch,
   freeKey,
   type MatchSetup,
 } from '@/game/setup';
 import { useL, useT } from '@/i18n';
+import { useOnline } from '@/net/online';
 import { dispatchMatch, useMatchStore } from '@/store/match';
 import { isLevelUnlocked, useProgress, type StoryOutcome } from '@/store/progress';
 import { GlitchText } from '@/ui/GlitchText';
@@ -88,7 +91,8 @@ function PauseModal({
   onQuit,
 }: {
   onResume: () => void;
-  onRestart: () => void;
+  /** Absent en ligne : on ne recommence pas un duel contre un autre joueur. */
+  onRestart?: () => void;
   onQuit: () => void;
 }) {
   const t = useT();
@@ -96,7 +100,7 @@ function PauseModal({
     <Animated.View entering={FadeIn.duration(120)} style={[FILL, styles.pauseCover]} testID="pause-modal">
       <Panel color={C.cyan} style={styles.pausePanel}>
         <Txt variant="display" color={C.cyan} glow={14} size={28} center>
-          {t('game.paused')}
+          {t(onRestart ? 'game.paused' : 'game.quitTitle')}
         </Txt>
         <NeonButton
           testID="pause-resume"
@@ -105,13 +109,15 @@ function PauseModal({
           variant="solid"
           onPress={onResume}
         />
-        <NeonButton
-          testID="pause-restart"
-          label={t('game.restart')}
-          icon="retry"
-          color={C.violet}
-          onPress={onRestart}
-        />
+        {onRestart ? (
+          <NeonButton
+            testID="pause-restart"
+            label={t('game.restart')}
+            icon="retry"
+            color={C.violet}
+            onPress={onRestart}
+          />
+        ) : null}
         <NeonButton
           testID="pause-quit"
           label={t('game.quit')}
@@ -128,8 +134,8 @@ function PauseModal({
 /** Affiche du duel pendant le décompte : X contre son adversaire. */
 function Versus({ setup }: { setup: MatchSetup }) {
   const l = useL();
-  if (!setup.bot) return null;
-  const foe = CHARACTERS[setup.bot.character];
+  const foe = rivalOf(setup, l);
+  if (!foe) return null;
   return (
     <View style={styles.versus}>
       <View style={styles.fighter}>
@@ -142,9 +148,9 @@ function Versus({ setup }: { setup: MatchSetup }) {
         VS
       </Txt>
       <View style={styles.fighter}>
-        <Portrait who={setup.bot.character} size={104} />
+        <Portrait who={foe.portrait} size={104} tint={foe.color} />
         <Txt variant="title" color={foe.color} glow={6} numberOfLines={2} center>
-          {l(foe.name).toUpperCase()}
+          {foe.name.toUpperCase()}
         </Txt>
       </View>
     </View>
@@ -173,6 +179,8 @@ export default function PlayScreen() {
   const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   /** Numéro de la dernière partie lancée par cet écran (voir le nettoyage plus bas). */
   const ownedRun = useRef(-1);
+  /** En ligne, on ne peut pas mettre en pause : le bouton propose seulement d'abandonner. */
+  const [quitting, setQuitting] = useState(false);
 
   useStayAwake();
 
@@ -184,7 +192,15 @@ export default function PlayScreen() {
       const seed = seedParam && /^\d+$/.test(seedParam) ? Number(seedParam) : undefined;
 
       let next: MatchSetup | null;
-      if (kind === 'story' && levelId) next = buildStoryMatch(levelId, player);
+      if (kind === 'online') {
+        // La grille et l'adversaire viennent du serveur.
+        const found = useOnline.getState().found;
+        next = found ? buildOnlineMatch(found, player) : null;
+        if (!next) {
+          router.replace('/online');
+          return;
+        }
+      } else if (kind === 'story' && levelId) next = buildStoryMatch(levelId, player);
       else if (kind === 'duel' && botId) next = buildDuelMatch(botId, player, seed);
       else next = buildFreeMatch(asDifficulty(difficulty), asVariant(variant), player, seed);
 
@@ -194,7 +210,9 @@ export default function PlayScreen() {
       }
       useMatchStore.getState().start(next);
       ownedRun.current = useMatchStore.getState().runId;
+      if (next.config.remote) useOnline.getState().beginRelay();
       setResult(null);
+      setQuitting(false);
       if (withStory && next.level) setPhase(next.level.intro.length > 0 ? 'intro' : 'briefing');
       else setPhase('countdown');
     },
@@ -212,7 +230,10 @@ export default function PlayScreen() {
   useEffect(
     () => () => {
       const store = useMatchStore.getState();
-      if (store.runId === ownedRun.current) store.clear();
+      if (store.runId === ownedRun.current) {
+        if (store.setup?.config.remote) useOnline.getState().leaveMatch();
+        store.clear();
+      }
     },
     [],
   );
@@ -245,6 +266,8 @@ export default function PlayScreen() {
           outcome = progress.recordStory(current.meta.levelId, summary);
         } else if (current.meta.kind === 'duel') {
           outcome = progress.recordDuel(current.meta.botId, summary);
+        } else if (current.meta.kind === 'online') {
+          outcome = progress.recordDuel('online', summary);
         } else {
           const key = freeKey(current.meta.difficulty, current.meta.variant);
           outcome = progress.recordFree(key, summary);
@@ -270,7 +293,11 @@ export default function PlayScreen() {
     else router.replace(kind === 'story' ? '/story' : kind === 'duel' ? '/duel' : '/');
   }, [kind, router]);
 
-  const pause = useCallback(() => dispatchMatch({ type: 'pause' }), []);
+  const online = kind === 'online';
+  const pause = useCallback(() => {
+    if (online) setQuitting(true);
+    else dispatchMatch({ type: 'pause' });
+  }, [online]);
   const resume = useCallback(() => dispatchMatch({ type: 'resume' }), []);
   const restart = useCallback(() => begin(false), [begin]);
 
@@ -292,12 +319,20 @@ export default function PlayScreen() {
 
   // L'appli passe en arrière-plan en pleine partie : pause automatique.
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || online) return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') dispatchMatch({ type: 'pause' });
     });
     return () => subscription.remove();
-  }, [phase]);
+  }, [phase, online]);
+
+  /** Fin du décompte. En ligne, on attend l'heure du coup d'envoi commun. */
+  const onCountdownDone = useCallback(() => {
+    const startAt = useOnline.getState().found?.startAt;
+    const wait = online && startAt ? Math.max(0, startAt - Date.now()) : 0;
+    if (wait === 0) setPhase('playing');
+    else setTimeout(() => setPhase((current) => (current === 'countdown' ? 'playing' : current)), wait);
+  }, [online]);
 
   const onBoardArea = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -387,7 +422,7 @@ export default function PlayScreen() {
                 () => router.setParams({ level: upcoming })
               : undefined
           }
-          onRetry={restart}
+          onRetry={online ? exit : restart}
           onExit={exit}
         />
       </Screen>
@@ -395,9 +430,12 @@ export default function PlayScreen() {
   }
 
   const duel = setup.config.mode === 'duel';
+  const rival = rivalOf(setup, l);
   const title = level
     ? l(level.title)
-    : setup.bot
+    : online
+      ? t('duel.online')
+      : setup.bot
       ? t('duel.title')
       : t(`difficulty.${setup.config.puzzle.difficulty}`);
   const tag = setup.config.puzzle.variant === 'x' ? t('game.xseal') : undefined;
@@ -408,8 +446,8 @@ export default function PlayScreen() {
     <Screen padded={false} tint={duel ? C.magenta : C.cyan}>
       <View style={styles.game}>
         <Hud title={title} tag={tag} onPause={pause} />
-        {setup.bot ? (
-          <OpponentPanel key={`foe-${runId}`} bot={setup.bot} active={phase === 'playing'} />
+        {rival ? (
+          <OpponentPanel key={`foe-${runId}`} rival={rival} active={phase === 'playing'} />
         ) : null}
 
         <View style={styles.boardArea} onLayout={onBoardArea}>
@@ -426,7 +464,7 @@ export default function PlayScreen() {
       <FlashOverlay />
 
       {phase === 'countdown' ? (
-        <StartCountdown key={`count-${runId}`} onDone={() => setPhase('playing')}>
+        <StartCountdown key={`count-${runId}`} onDone={onCountdownDone}>
           <Versus setup={setup} />
         </StartCountdown>
       ) : null}
@@ -446,6 +484,9 @@ export default function PlayScreen() {
 
       {phase === 'playing' && status === 'paused' ? (
         <PauseModal onResume={resume} onRestart={restart} onQuit={exit} />
+      ) : null}
+      {phase === 'playing' && quitting ? (
+        <PauseModal onResume={() => setQuitting(false)} onQuit={exit} />
       ) : null}
     </Screen>
   );

@@ -9,11 +9,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { BotProfile, TauntMoment } from '@/content/bots';
-import { CHARACTERS } from '@/content/characters';
+import type { TauntMoment } from '@/content/bots';
 import type { EffectId } from '@/engine/powers';
 import { CELLS } from '@/engine/sudoku';
 import { matchEvents } from '@/game/events';
+import type { Rival } from '@/game/rival';
 import { useHasEffect, useMatch } from '@/game/selectors';
 import { useL, useT } from '@/i18n';
 
@@ -90,7 +90,7 @@ function ProgressLine({
   );
 }
 
-const EFFECT_ICONS: EffectId[] = ['freeze', 'glitch', 'blackout', 'shield'];
+const EFFECT_ICONS: EffectId[] = ['freeze', 'glitch', 'blackout', 'flip', 'shield', 'mirror'];
 
 function EffectBadge({ effect }: { effect: EffectId }) {
   const active = useHasEffect('opponent', effect);
@@ -104,16 +104,16 @@ function EffectBadge({ effect }: { effect: EffectId }) {
 }
 
 interface OpponentPanelProps {
-  bot: BotProfile;
+  rival: Rival;
   /** Vrai une fois le décompte terminé : l'adversaire peut commencer à parler. */
   active: boolean;
 }
 
 /** Bandeau de l'adversaire en duel : portrait, avancée comparée, effets, répliques. */
-export const OpponentPanel = memo(function OpponentPanel({ bot, active }: OpponentPanelProps) {
+export const OpponentPanel = memo(function OpponentPanel({ rival, active }: OpponentPanelProps) {
   const t = useT();
   const l = useL();
-  const character = CHARACTERS[bot.character];
+  const taunts = rival.taunts;
   const total = useMatch((match) => CELLS - match.config.puzzle.clues, 0);
   const theirs = useMatch((match) => match.opponent?.remaining ?? 0, 0);
   const mine = useMatch((match) => match.player.remaining, 0);
@@ -134,7 +134,7 @@ export const OpponentPanel = memo(function OpponentPanel({ bot, active }: Oppone
     const say = (moment: TauntMoment, force = false) => {
       const now = Date.now();
       if (!force && now - lastTauntAt.current < 5000) return;
-      const lines = bot.taunts[moment];
+      const lines = taunts ? taunts[moment] : [];
       if (lines.length === 0) return;
       lastTauntAt.current = now;
       const line = lines[Math.floor(Math.random() * lines.length)];
@@ -174,13 +174,13 @@ export const OpponentPanel = memo(function OpponentPanel({ bot, active }: Oppone
       unsubscribe();
       if (timer) clearTimeout(timer);
     };
-  }, [active, bot, hit, l]);
+  }, [active, taunts, hit, l]);
 
   // Première fois que l'adversaire prend une nette avance : il se moque.
   useEffect(() => {
     if (!leadTaunted.current && total > 0 && mine - theirs >= 5) {
       leadTaunted.current = true;
-      const lines = bot.taunts.lead;
+      const lines = taunts ? taunts.lead : [];
       if (lines.length > 0) {
         lastTauntAt.current = Date.now();
         setTaunt({ id: nextId.current++, text: l(lines[0]) });
@@ -188,18 +188,18 @@ export const OpponentPanel = memo(function OpponentPanel({ bot, active }: Oppone
         return () => clearTimeout(timer);
       }
     }
-  }, [bot, l, mine, theirs, total]);
+  }, [taunts, l, mine, theirs, total]);
 
   const hitStyle = useAnimatedStyle(() => ({ opacity: hit.value }));
-  const color = character.color;
+  const color = rival.color;
 
   return (
     <View style={[styles.panel, { borderColor: alpha(color, 0.45) }]} testID="opponent">
-      <Portrait who={bot.character} size={64} />
+      <Portrait who={rival.portrait} size={64} tint={rival.color} />
       <View style={styles.middle}>
         <View style={styles.nameRow}>
           <Txt variant="title" color={color} glow={6} size={13} numberOfLines={1} style={styles.name}>
-            {l(character.name).toUpperCase()}
+            {rival.name.toUpperCase()}
           </Txt>
           <View style={styles.badges}>
             {EFFECT_ICONS.map((effect) => (
@@ -213,7 +213,7 @@ export const OpponentPanel = memo(function OpponentPanel({ bot, active }: Oppone
           </View>
         </View>
         <ProgressLine
-          label={l(character.name).split(' ').pop() as string}
+          label={rival.name.split(' ').pop() as string}
           done={total - theirs}
           total={total}
           color={color}
