@@ -10,8 +10,8 @@
  *  - relayer les attaques et leurs résultats ;
  *  - désigner le vainqueur.
  */
-import { POWERS, isAttack, type EffectId, type PowerId } from '../src/engine/powers';
-import { CELLS, generatePuzzle } from '../src/engine/sudoku';
+import { POWERS, isAttack, type EffectId, type PowerId } from '../engine/powers';
+import { CELLS, generatePuzzle } from '../engine/sudoku';
 import {
   ONLINE_PUZZLE,
   PROTOCOL_VERSION,
@@ -23,7 +23,7 @@ import {
   type PuzzleSpec,
   type ServerErrorCode,
   type ServerMessage,
-} from '../src/net/protocol';
+} from './protocol';
 
 /** Le moyen d'envoyer un message à un joueur connecté. */
 export interface Peer {

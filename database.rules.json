@@ -1,0 +1,35 @@
+{
+  "rules": {
+    "queue": {
+      ".read": true,
+      ".write": true,
+      ".validate": "!newData.exists() || (newData.child('code').isString() && newData.child('code').val().length === 4 && newData.child('at').isNumber())"
+    },
+    "rooms": {
+      "$code": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$code.length === 4",
+        "meta": {
+          ".validate": "newData.child('open').isBoolean() && newData.child('at').isNumber()"
+        },
+        "guest": {
+          ".validate": "newData.val() === 'here' || newData.val() === 'gone'"
+        },
+        "c2h": {
+          "$id": {
+            ".validate": "newData.child('m').isString() && newData.child('m').val().length < 2000"
+          }
+        },
+        "h2c": {
+          "$id": {
+            ".validate": "newData.child('m').isString() && newData.child('m').val().length < 2000"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

@@ -1,11 +1,11 @@
-import { generatePuzzle } from '../../src/engine/sudoku';
+import { generatePuzzle } from '../../engine/sudoku';
 import {
   PROTOCOL_VERSION,
   ROOM_ALPHABET,
   ROOM_CODE_LENGTH,
   type ClientMessage,
   type ServerMessage,
-} from '../../src/net/protocol';
+} from '../protocol';
 import { Lobby } from '../lobby';
 
 /** Un joueur de test : il garde tout ce que le serveur lui envoie. */

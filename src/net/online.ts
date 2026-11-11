@@ -1,11 +1,13 @@
 /**
- * Connexion au serveur de duels et relais d'une partie en ligne.
+ * Duels entre joueurs, sans serveur à nous. Deux façons de se retrouver :
+ *  - « local » : sur le même Wi-Fi ou via le partage de connexion, en direct ;
+ *  - « internet » : par Firebase, qui sert de boîte aux lettres.
+ * Dans les deux cas, le téléphone de l'hôte arbitre (`HostSession`).
  *
- * La connexion vit en dehors des écrans : on la garde en passant de l'écran
- * « En ligne » à l'écran de jeu. Pendant un duel, ce module fait le pont :
- *  - ce que fait le joueur (événements du moteur) part vers le serveur ;
- *  - ce que fait l'adversaire (messages du serveur) entre dans le moteur.
+ * La connexion vit en dehors des écrans. Pendant un duel, ce module fait le
+ * pont entre le moteur (nos coups) et le réseau (ceux de l'adversaire).
  */
+import * as Network from 'expo-network';
 import { create } from 'zustand';
 
 import type { EndReason } from '@/engine/match';
@@ -13,17 +15,46 @@ import { matchEvents } from '@/game/events';
 import { dispatchMatch, useMatchStore } from '@/store/match';
 import { useProgress } from '@/store/progress';
 
-import { serverUrl } from './config';
+import { HostSession } from './host';
 import {
-  PROTOCOL_VERSION,
-  normalizeRoomCode,
-  type ClientMessage,
-  type PuzzleSpec,
-  type ServerMessage,
-} from './protocol';
+  claimQuickMatch,
+  hostInternet,
+  internetAvailable,
+  joinInternet,
+  leaveQuickMatch,
+} from './internet';
+import type { Link, LinkHandlers } from './link';
+import { LOCAL_PORT, codeToIp, ipToCode } from './localCode';
+import { localAvailable, nativeNet } from './nativeTcp';
+import { PROTOCOL_VERSION, type ClientMessage, type PuzzleSpec, type ServerMessage } from './protocol';
+import { hostTcp, joinTcp } from './tcp';
 
-export type OnlinePhase = 'offline' | 'connecting' | 'lobby' | 'queued' | 'hosting' | 'matched';
-export type OnlineError = 'unreachable' | 'roomNotFound' | 'badVersion' | 'lost' | null;
+export type OnlineMode = 'local' | 'internet';
+export type OnlinePhase =
+  /** Pas de connexion. */
+  | 'idle'
+  /** Connexion ou création du salon en cours. */
+  | 'busy'
+  /** Hôte : salon ouvert, on attend l'invité (le code est affiché). */
+  | 'hosting'
+  /** Partie rapide : on cherche un adversaire. */
+  | 'searching'
+  /** Reliés à l'adversaire, entre deux duels. */
+  | 'paired'
+  /** Revanche demandée : on attend que l'autre accepte aussi. */
+  | 'waitingRematch'
+  /** Duel trouvé : direction l'écran de jeu. */
+  | 'matched';
+
+export type OnlineError =
+  | 'unreachable'
+  | 'roomNotFound'
+  | 'badCode'
+  | 'noNetwork'
+  | 'lost'
+  | 'rivalLeft'
+  | 'badVersion'
+  | null;
 
 export interface FoundMatch {
   seed: number;
@@ -35,31 +66,39 @@ export interface FoundMatch {
 
 interface OnlineState {
   phase: OnlinePhase;
+  mode: OnlineMode | null;
   error: OnlineError;
-  roomCode: string | null;
+  /** Code à donner à l'adversaire (hôte). */
+  code: string | null;
+  rival: string | null;
   found: FoundMatch | null;
-  url: string;
-  connect: () => void;
-  disconnect: () => void;
-  quickMatch: () => void;
-  createRoom: () => void;
-  joinRoom: (code: string) => void;
+  hostLocal: () => Promise<void>;
+  joinLocal: (code: string) => void;
+  quickMatch: () => Promise<void>;
+  createRoom: () => Promise<void>;
+  joinRoom: (code: string) => Promise<void>;
+  rematch: () => void;
+  /** Tout fermer et revenir au départ. */
   cancel: () => void;
-  /** L'écran de jeu a lancé la partie : on commence à relayer. */
   beginRelay: () => void;
-  /** Le joueur quitte l'écran de jeu (abandon si le duel est en cours). */
   leaveMatch: () => void;
 }
 
-const PING_MS = 20_000;
+export { internetAvailable, localAvailable };
 
-let socket: WebSocket | null = null;
-let pingTimer: ReturnType<typeof setInterval> | null = null;
+/* ---------------- État de la connexion (hors React) ---------------- */
+
+let link: Link | null = null;
+let teardownTransport: (() => void) | null = null;
+/** Code du salon qu'on a inscrit en partie rapide, à retirer en partant. */
+let queuedCode: string | null = null;
 let relaying = false;
 let lastStatus = '';
+/** Incrémenté à chaque nouvelle tentative : les réponses des anciennes sont ignorées. */
+let attempt = 0;
 
 function send(message: ClientMessage): void {
-  if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
+  link?.send(message);
 }
 
 function stopRelay(): void {
@@ -67,47 +106,61 @@ function stopRelay(): void {
   lastStatus = '';
 }
 
+function greet(): void {
+  send({ t: 'hello', v: PROTOCOL_VERSION, name: useProgress.getState().playerName });
+  send({ t: 'queue' });
+}
+
 export const useOnline = create<OnlineState>()((set, get) => {
-  const closed = (reason: OnlineError) => {
-    if (pingTimer) clearInterval(pingTimer);
-    pingTimer = null;
-    socket = null;
-    // Connexion perdue en plein duel : c'est une défaite, sauf grille déjà finie.
+  /** Ferme tout ce qui est ouvert. */
+  const teardown = () => {
+    attempt += 1;
+    if (queuedCode) {
+      leaveQuickMatch(queuedCode).catch(() => {});
+      queuedCode = null;
+    }
+    const current = link;
+    link = null;
+    current?.close();
+    teardownTransport?.();
+    teardownTransport = null;
+  };
+
+  /** La connexion s'est arrêtée d'elle-même. */
+  const lostConnection = (error: OnlineError) => {
     if (relaying) {
       const match = useMatchStore.getState().match;
       const done = match !== null && match.player.remaining === 0;
       dispatchMatch({
         type: 'remote',
-        event: { kind: 'over', won: done, reason: done ? 'solved' : 'disconnected' },
+        event: {
+          kind: 'over',
+          won: error === 'rivalLeft' || done,
+          reason: error === 'rivalLeft' ? 'forfeit' : done ? 'solved' : 'disconnected',
+        },
       });
     }
     stopRelay();
-    set({ phase: 'offline', error: reason, roomCode: null, found: null });
+    teardown();
+    set({ phase: 'idle', error, code: null, found: null });
   };
 
   const onMessage = (message: ServerMessage) => {
     switch (message.t) {
-      case 'welcome':
-        set({ phase: 'lobby', error: null });
-        return;
       case 'queued':
-        set({ phase: 'queued', error: null });
-        return;
-      case 'room':
-        set({ phase: 'hosting', roomCode: message.code, error: null });
-        return;
-      case 'idle':
-        set({ phase: 'lobby', roomCode: null });
         return;
       case 'error':
-        if (message.code === 'roomNotFound') set({ error: 'roomNotFound' });
-        else if (message.code === 'badVersion') set({ error: 'badVersion' });
+        if (message.code === 'badVersion') lostConnection('badVersion');
         return;
       case 'matched':
+        if (queuedCode) {
+          leaveQuickMatch(queuedCode).catch(() => {});
+          queuedCode = null;
+        }
         set({
           phase: 'matched',
-          roomCode: null,
           error: null,
+          rival: message.opponent,
           found: {
             seed: message.seed,
             puzzle: message.puzzle,
@@ -121,10 +174,7 @@ export const useOnline = create<OnlineState>()((set, get) => {
         return;
       case 'attack':
         if (relaying) {
-          dispatchMatch({
-            type: 'remote',
-            event: { kind: 'attack', ref: message.ref, power: message.power },
-          });
+          dispatchMatch({ type: 'remote', event: { kind: 'attack', ref: message.ref, power: message.power } });
         }
         return;
       case 'resolved':
@@ -153,11 +203,9 @@ export const useOnline = create<OnlineState>()((set, get) => {
           : message.reason === 'timeout'
             ? 'timeout'
             : 'outpaced';
-        if (relaying) {
-          dispatchMatch({ type: 'remote', event: { kind: 'over', won: message.won, reason } });
-        }
+        if (relaying) dispatchMatch({ type: 'remote', event: { kind: 'over', won: message.won, reason } });
         stopRelay();
-        set({ phase: 'lobby', found: null });
+        set({ phase: 'paired', found: null });
         return;
       }
       default:
@@ -165,72 +213,203 @@ export const useOnline = create<OnlineState>()((set, get) => {
     }
   };
 
-  return {
-    phase: 'offline',
-    error: null,
-    roomCode: null,
-    found: null,
-    url: serverUrl(),
+  /** Prépare les gestionnaires d'un lien, en ignorant ceux d'une tentative abandonnée. */
+  const handlersFor = (mine: number): LinkHandlers => ({
+    onOpen: () => {
+      if (mine === attempt) greet();
+    },
+    onMessage: (message) => {
+      if (mine === attempt) onMessage(message);
+    },
+    onClose: (reason) => {
+      if (mine !== attempt) return;
+      lostConnection(
+        reason === 'rivalLeft' ? 'rivalLeft' : get().phase === 'busy' && reason === 'unreachable' ? 'unreachable' : 'lost',
+      );
+    },
+  });
 
-    connect: () => {
-      if (socket) return;
-      const url = serverUrl();
-      set({ phase: 'connecting', error: null, url });
-      let ws: WebSocket;
+  /** Crée une session d'hôte qui prévient quand l'invité arrive ou repart. */
+  const newHost = (mine: number) =>
+    new HostSession(handlersFor(mine), {
+      onGuestJoined: () => {
+        if (mine !== attempt) return;
+        if (queuedCode) {
+          leaveQuickMatch(queuedCode).catch(() => {});
+          queuedCode = null;
+        }
+      },
+      onGuestLeft: () => {
+        // Laisse d'abord passer le message de fin de duel (forfait), puis ferme.
+        setTimeout(() => {
+          if (mine === attempt) lostConnection('rivalLeft');
+        }, 50);
+      },
+    });
+
+  const startHostLink = (session: HostSession) => {
+    link = session.link;
+    greet();
+  };
+
+  return {
+    phase: 'idle',
+    mode: null,
+    error: null,
+    code: null,
+    rival: null,
+    found: null,
+
+    hostLocal: async () => {
+      teardown();
+      const mine = attempt;
+      set({ phase: 'busy', mode: 'local', error: null, code: null, rival: null });
+      let ip = '';
       try {
-        ws = new WebSocket(url);
+        ip = await Network.getIpAddressAsync();
       } catch {
-        set({ phase: 'offline', error: 'unreachable' });
+        ip = '';
+      }
+      const code = ipToCode(ip);
+      if (mine !== attempt) return;
+      if (!code) {
+        set({ phase: 'idle', error: 'noNetwork' });
         return;
       }
-      socket = ws;
-      let opened = false;
-      ws.onopen = () => {
-        opened = true;
-        send({ t: 'hello', v: PROTOCOL_VERSION, name: useProgress.getState().playerName });
-        pingTimer = setInterval(() => send({ t: 'ping' }), PING_MS);
-      };
-      ws.onmessage = (event) => {
-        if (socket !== ws) return;
-        try {
-          onMessage(JSON.parse(String(event.data)) as ServerMessage);
-        } catch {
-          // Message illisible : on l'ignore.
+      const session = newHost(mine);
+      try {
+        const server = await hostTcp(nativeNet(), LOCAL_PORT, session);
+        if (mine !== attempt) {
+          server.stop();
+          session.close();
+          return;
         }
-      };
-      ws.onclose = () => {
-        if (socket !== ws) return;
-        closed(opened ? 'lost' : 'unreachable');
-      };
-      ws.onerror = () => {
-        // `onclose` suit toujours : c'est lui qui fait le ménage.
-      };
+        teardownTransport = () => {
+          server.stop();
+          session.close();
+        };
+      } catch {
+        session.close();
+        if (mine === attempt) set({ phase: 'idle', error: 'unreachable' });
+        return;
+      }
+      startHostLink(session);
+      set({ phase: 'hosting', code });
     },
 
-    disconnect: () => {
-      const ws = socket;
-      if (!ws) return;
-      socket = null;
-      if (pingTimer) clearInterval(pingTimer);
-      pingTimer = null;
-      stopRelay();
-      ws.close();
-      set({ phase: 'offline', error: null, roomCode: null, found: null });
+    joinLocal: (input) => {
+      teardown();
+      const ip = codeToIp(input);
+      if (!ip) {
+        set({ phase: 'idle', mode: 'local', error: 'badCode' });
+        return;
+      }
+      const mine = attempt;
+      set({ phase: 'busy', mode: 'local', error: null, code: null, rival: null });
+      link = joinTcp(nativeNet(), ip, LOCAL_PORT, handlersFor(mine));
     },
 
-    quickMatch: () => {
-      set({ error: null });
+    createRoom: async () => {
+      teardown();
+      const mine = attempt;
+      set({ phase: 'busy', mode: 'internet', error: null, code: null, rival: null });
+      const session = newHost(mine);
+      try {
+        const room = await hostInternet(session);
+        if (mine !== attempt) {
+          room.stop();
+          session.close();
+          return;
+        }
+        teardownTransport = () => {
+          room.stop();
+          session.close();
+        };
+        startHostLink(session);
+        set({ phase: 'hosting', code: room.code });
+      } catch {
+        session.close();
+        if (mine === attempt) set({ phase: 'idle', error: 'unreachable' });
+      }
+    },
+
+    joinRoom: async (code) => {
+      teardown();
+      const mine = attempt;
+      set({ phase: 'busy', mode: 'internet', error: null, code: null, rival: null });
+      try {
+        const joined = await joinInternet(code, handlersFor(mine));
+        if (mine !== attempt) {
+          joined?.close();
+          return;
+        }
+        if (!joined) {
+          set({ phase: 'idle', error: 'roomNotFound' });
+          return;
+        }
+        link = joined;
+      } catch {
+        if (mine === attempt) set({ phase: 'idle', error: 'unreachable' });
+      }
+    },
+
+    quickMatch: async () => {
+      teardown();
+      const mine = attempt;
+      set({ phase: 'busy', mode: 'internet', error: null, code: null, rival: null });
+      try {
+        // Deux essais : un joueur en attente a pu partir juste avant qu'on le rejoigne.
+        for (let round = 0; round < 3 && mine === attempt; round++) {
+          const session = newHost(mine);
+          const room = await hostInternet(session);
+          const claim = await claimQuickMatch(room.code);
+          if (mine !== attempt) {
+            room.stop();
+            session.close();
+            if ('wait' in claim) await leaveQuickMatch(room.code);
+            return;
+          }
+          if ('wait' in claim) {
+            queuedCode = room.code;
+            teardownTransport = () => {
+              room.stop();
+              session.close();
+            };
+            startHostLink(session);
+            set({ phase: 'searching' });
+            return;
+          }
+          // Quelqu'un attendait : on rejoint son salon et on ferme le nôtre.
+          room.stop();
+          session.close();
+          const joined = await joinInternet(claim.join, handlersFor(mine));
+          if (mine !== attempt) {
+            joined?.close();
+            return;
+          }
+          if (joined) {
+            link = joined;
+            set({ phase: 'searching' });
+            return;
+          }
+        }
+        if (mine === attempt) set({ phase: 'idle', error: 'unreachable' });
+      } catch {
+        if (mine === attempt) set({ phase: 'idle', error: 'unreachable' });
+      }
+    },
+
+    rematch: () => {
+      if (get().phase !== 'paired') return;
       send({ t: 'queue' });
+      set({ phase: 'waitingRematch' });
     },
-    createRoom: () => {
-      set({ error: null });
-      send({ t: 'createRoom' });
+
+    cancel: () => {
+      stopRelay();
+      teardown();
+      set({ phase: 'idle', error: null, code: null, found: null, rival: null });
     },
-    joinRoom: (code) => {
-      set({ error: null });
-      send({ t: 'joinRoom', code: normalizeRoomCode(code) });
-    },
-    cancel: () => send({ t: 'cancel' }),
 
     beginRelay: () => {
       relaying = true;
@@ -240,12 +419,12 @@ export const useOnline = create<OnlineState>()((set, get) => {
     leaveMatch: () => {
       if (relaying) send({ t: 'leave' });
       stopRelay();
-      if (get().phase === 'matched') set({ phase: socket ? 'lobby' : 'offline', found: null });
+      if (get().phase === 'matched') set({ phase: link ? 'paired' : 'idle', found: null });
     },
   };
 });
 
-/* Ce que fait le joueur part vers le serveur. */
+/* Ce que fait le joueur part vers l'adversaire. */
 matchEvents.on((event) => {
   if (!relaying) return;
   switch (event.type) {
@@ -253,22 +432,21 @@ matchEvents.on((event) => {
       if (event.side === 'player') send({ t: 'placed', cell: event.cell, digit: event.digit });
       break;
     case 'attackLaunched':
-      if (event.attack.from === 'player') {
-        send({ t: 'attack', ref: event.attack.id, power: event.attack.power });
-      }
+      if (event.attack.from === 'player') send({ t: 'attack', ref: event.attack.id, power: event.attack.power });
       break;
     case 'attackHit':
     case 'attackBlocked':
     case 'attackReflected': {
       const { attack } = event;
       if (attack.target !== 'player' || attack.from !== 'opponent' || attack.ref === null) break;
+      const hit = event.type === 'attackHit';
       send({
         t: 'resolved',
         ref: attack.ref,
-        outcome: event.type === 'attackHit' ? 'hit' : event.type === 'attackBlocked' ? 'blocked' : 'reflected',
-        cells: event.type === 'attackHit' ? event.cells : [],
-        boxes: event.type === 'attackHit' ? event.boxes : [],
-        amount: event.type === 'attackHit' ? event.amount : 0,
+        outcome: hit ? 'hit' : event.type === 'attackBlocked' ? 'blocked' : 'reflected',
+        cells: hit ? event.cells : [],
+        boxes: hit ? event.boxes : [],
+        amount: hit ? event.amount : 0,
       });
       break;
     }

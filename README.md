@@ -7,8 +7,8 @@ duels en temps réel et une vraie histoire.
 
 Ce dépôt contient un **prototype jouable** : le jeu solo, douze pouvoirs, les
 deux premiers chapitres de l'histoire (16 missions), les duels contre des
-adversaires contrôlés par l'ordinateur et les **duels en ligne** contre de
-vrais joueurs.
+adversaires contrôlés par l'ordinateur et les **duels entre joueurs**, sans
+serveur : en direct entre téléphones proches, ou par Internet via Firebase.
 
 ## Lancer le jeu
 
@@ -31,50 +31,112 @@ Un QR code s'affiche dans le terminal.
 - **Dans un navigateur** : appuie sur `w` dans le terminal, ou lance
   `npm run web`.
 
-## Jouer en ligne
+## Duels entre joueurs (sans serveur)
 
-Les duels en ligne passent par un petit serveur fourni dans ce dépôt
-(dossier `server/`).
+Dans le jeu : **Duel → Duel entre joueurs**. Il n'y a aucun serveur à faire
+tourner : le téléphone qui **héberge** le duel sert d'arbitre.
 
-### Sur le même Wi-Fi
+### À côté de toi (sans Internet)
 
-Dans un **second terminal**, à côté de celui où tourne `npx expo start` :
+Les deux téléphones sont sur le même Wi-Fi, **ou** l'un active son partage
+de connexion et l'autre s'y connecte (marche aussi sans forfait data).
+
+1. Un joueur touche **Héberger** : un code de sept caractères s'affiche.
+2. L'autre le saisit et touche **Rejoindre**.
+
+Ce mode n'existe que dans l'**application installée** (voir
+[Installer le jeu](#installer-le-jeu-gratuitement)) : il a besoin d'un accès
+au réseau qu'Expo Go et les navigateurs n'offrent pas.
+
+### Par Internet
+
+Il passe par **Firebase Realtime Database**, un service gratuit de Google
+qui sert de boîte aux lettres entre les deux téléphones : rien à héberger,
+rien à maintenir. Il faut le configurer une fois :
+
+1. Va sur [console.firebase.google.com](https://console.firebase.google.com)
+   avec un compte Google, et crée un projet (Google Analytics : inutile).
+2. Dans le menu **Créer → Realtime Database**, clique sur **Créer une base
+   de données**, choisis l'emplacement le plus proche, puis **mode verrouillé**.
+3. Onglet **Règles** : remplace tout par le contenu du fichier
+   `database.rules.json` de ce dépôt, puis **Publier**.
+4. Onglet **Données** : copie l'adresse affichée en haut (elle se termine par
+   `firebasedatabase.app` ou `firebaseio.com`).
+5. Dans le dossier du jeu, copie `.env.example` en `.env` et colle cette
+   adresse dans `EXPO_PUBLIC_FIREBASE_DATABASE_URL`, et le nom du projet dans
+   `EXPO_PUBLIC_FIREBASE_PROJECT_ID`.
+6. Relance `npx expo start`.
+
+Ensuite : **Partie rapide** (premier joueur disponible) ou **Créer un salon**
+(code de quatre caractères à donner à un ami). L'offre gratuite de Firebase
+suffit largement pour un jeu entre amis (100 joueurs connectés en même temps).
+
+Ces valeurs ne sont pas secrètes : tu peux enregistrer le fichier `.env` dans
+le dépôt, ce qui est même nécessaire pour que les compilations dans le cloud
+(ci-dessous) en profitent.
+
+## Installer le jeu gratuitement
+
+Le **Play Store** coûte 25 $ (une seule fois) et l'**App Store** 99 $ par an :
+sans payer, on ne peut pas y être. Voici ce qui est gratuit.
+
+### Android : un fichier APK
+
+L'APK est l'application installable, que tu peux envoyer à qui tu veux. Elle
+est compilée gratuitement dans le cloud par Expo (compte gratuit, quelques
+compilations par mois).
+
+1. Crée un compte sur [expo.dev](https://expo.dev).
+2. Dans le dossier du jeu :
+
+   ```bash
+   npx eas-cli login
+   ```
+
+   ```bash
+   npx eas-cli build -p android --profile apk
+   ```
+
+   La première fois, réponds **oui** pour créer le projet Expo et générer la
+   clé de signature. La compilation prend 10 à 20 minutes (file d'attente
+   gratuite comprise).
+3. Tu obtiens un lien de téléchargement. Ouvre-le sur un téléphone Android,
+   télécharge l'APK et installe-le (Android demande d'autoriser
+   « l'installation d'applications inconnues » pour le navigateur).
+
+Partage ce lien à tes amis : ils installent le même fichier. Pour une
+nouvelle version, augmente `version` et `android.versionCode` dans
+`app.json`, puis relance la compilation.
+
+### iPhone : la version web
+
+Apple ne permet pas d'installer gratuitement une application sur l'iPhone
+de quelqu'un d'autre. En revanche, le jeu fonctionne dans Safari, et on peut
+l'ajouter à l'écran d'accueil comme une app (bouton Partager → **Sur l'écran
+d'accueil**). Hébergement gratuit avec le même compte Expo :
 
 ```bash
-npm run server
+npx expo export -p web
 ```
 
-Laisse-le ouvert. Si Windows demande d'autoriser Node.js à communiquer sur
-le réseau, accepte. Dans le jeu : **Duel → Duel en ligne**. Le jeu trouve le
-serveur tout seul, car il tourne sur le même ordinateur que `expo start`.
+```bash
+npx eas-cli deploy --prod
+```
 
-- **Partie rapide** : affronte le premier joueur qui cherche aussi.
-- **Créer un salon** : donne le code de quatre caractères à ton ami, qui le
-  saisit dans **Rejoindre un salon**.
+Tu obtiens une adresse en `https://…expo.app` à partager. Dans le
+navigateur, les duels **Par Internet** fonctionnent ; le mode **À côté de
+toi** non.
 
-Pour essayer seul, ouvre le jeu sur ton téléphone et dans un navigateur
-(touche `w`) : cela fait deux joueurs.
+### Plus tard, sur les magasins
 
-### Partout, par Internet
-
-Il faut héberger le serveur. Le fichier `render.yaml` est prêt pour
-[Render](https://render.com), qui a une offre gratuite :
-
-1. Crée un compte Render et relie ton compte GitHub.
-2. **New → Blueprint**, choisis ce dépôt, valide.
-3. Render donne une adresse du type `https://sudokux-server.onrender.com`.
-4. À la racine du projet, crée un fichier `.env` contenant cette adresse en
-   `wss://` :
-
-   ```
-   EXPO_PUBLIC_SERVER_URL=wss://sudokux-server.onrender.com
-   ```
-
-5. Relance `npx expo start`.
-
-Cette mise en ligne n'a pas été testée depuis ici. Sur l'offre gratuite, le
-serveur s'endort après un quart d'heure sans visite : la première connexion
-peut alors prendre une minute.
+Tout est prêt si tu décides de payer : le profil `production` d'`eas.json`
+produit le fichier attendu par le Play Store (`eas build -p android
+--profile production`), et l'iPhone se compile aussi dans le cloud, sans
+Mac (`eas build -p ios`). Il faudra une page web pour la politique de
+confidentialité : un modèle est dans `docs/confidentialite.md`. Attention,
+Google demande aux nouveaux comptes personnels de faire tester l'application
+par une douzaine de personnes pendant deux semaines avant de la publier
+(règle en vigueur à la date de rédaction : à revérifier).
 
 ## Le jeu
 
@@ -166,10 +228,9 @@ src/
   content/    L'histoire, les personnages et les adversaires
   game/       Le lien entre le moteur et l'interface
   store/      La partie en cours et la progression sauvegardée
-  net/        La connexion au serveur de duels et le format des messages
+  net/        Les duels entre joueurs : arbitrage, réseau local, Firebase
   i18n/       Tous les textes, en français et en anglais
   ui/         Les composants visuels (grille, effets, portraits…)
-server/       Le serveur de duels en ligne (Node.js)
 ```
 
 Le moteur est écrit comme une fonction pure : `reduceMatch(état, action)`
@@ -194,36 +255,37 @@ Pour modifier l'équilibrage, les valeurs sont regroupées dans
 (adversaires). L'histoire est dans `src/content/story.ts` (chapitre 1) et
 `src/content/chapter2.ts`.
 
-En ligne, chaque joueur fait autorité sur sa propre grille et annonce ce
-qu'il fait. Le serveur met les joueurs en relation, leur envoie la même
-graine de grille, vérifie chaque chiffre posé, relaie les attaques et
-désigne le vainqueur. Il ne vérifie pas encore la charge dépensée pour les
-pouvoirs : un joueur qui modifierait son jeu pourrait en abuser.
+Entre joueurs, chacun fait autorité sur sa propre grille et annonce ce qu'il
+fait. Le téléphone de l'hôte arbitre (`src/net/lobby.ts`) : il choisit la
+grille, vérifie chaque chiffre posé, relaie les attaques et désigne le
+vainqueur. Le transport est interchangeable : TCP en direct sur le réseau
+local (`src/net/tcp.ts`), ou Firebase par Internet (`src/net/internet.ts`).
+La charge dépensée pour les pouvoirs n'est pas vérifiée : un joueur qui
+modifierait son application pourrait en abuser. Et comme l'hôte arbitre, il
+pourrait tricher en modifiant la sienne.
 
 ## Ce qui a été vérifié
 
-- 151 tests automatiques : moteur, pouvoirs, mode en ligne, serveur de duels,
-  contenu de l'histoire.
-- Les parcours complets ont été joués de bout en bout dans un navigateur, y
-  compris un duel en ligne entre deux joueurs simulés (salon à code,
-  attaques, victoire, revanche en partie rapide, forfait sur déconnexion).
+- 160 tests automatiques : moteur, pouvoirs, mode en ligne, arbitrage,
+  duels sur le réseau local avec de vraies connexions TCP, contenu de
+  l'histoire.
+- Les duels **Par Internet** ont été joués de bout en bout entre deux
+  navigateurs, avec l'émulateur Firebase et les règles de sécurité du dépôt :
+  salon à code, code faux, attaques et Miroir, victoire, revanche, abandon,
+  partie rapide, hôte qui ferme l'application.
 - Le code se compile pour Android et pour iOS.
 
-Je n'ai pas pu essayer le jeu sur un vrai téléphone, ni le duel en ligne
-entre deux appareils réels, ni l'hébergement du serveur sur Render.
+Pas encore vérifié, faute d'appareils réels et de comptes ici : le mode
+**À côté de toi** sur deux vrais téléphones, la compilation de l'APK dans le
+cloud, et un vrai projet Firebase.
 
 ## La suite
 
 - **Chapitre 3**, *Le Septième* : aller chercher Mamie Octet dans les
   jardins verticaux.
-- **En ligne** : reprise après une coupure de connexion, classement,
-  vérification des pouvoirs par le serveur.
+- **Entre joueurs** : reprise après une coupure, vérification de la charge
+  des pouvoirs.
 - **Sons et musique.**
-- **Publication** sur le Play Store et l'App Store avec
-  [EAS Build](https://docs.expo.dev/build/introduction/). Les identifiants de
-  l'application sont dans `app.json` (`com.capitainemax9.sudokux`) : à changer
-  si besoin avant la première publication. Une version publiée devra
-  utiliser un serveur en `wss://`.
 
 L'icône et l'image de démarrage sont produites par
 `node scripts/generate-assets.js`.

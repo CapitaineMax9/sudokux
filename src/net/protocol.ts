@@ -13,7 +13,6 @@ import type { Difficulty, Variant } from '../engine/sudoku';
 
 /** À augmenter quand le protocole change de façon incompatible. */
 export const PROTOCOL_VERSION = 1;
-export const DEFAULT_PORT = 8787;
 export const ROOM_CODE_LENGTH = 4;
 export const MAX_NAME_LENGTH = 14;
 

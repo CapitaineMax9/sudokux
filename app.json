@@ -10,7 +10,12 @@
     "backgroundColor": "#05050d",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.capitainemax9.sudokux"
+      "bundleIdentifier": "com.capitainemax9.sudokux",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Sudoku X utilise le réseau local pour les duels entre téléphones proches.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.capitainemax9.sudokux",
@@ -19,7 +24,13 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE"
+      ]
     },
     "web": {
       "output": "single",
