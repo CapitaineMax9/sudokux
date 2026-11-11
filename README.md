@@ -80,7 +80,27 @@ le dépôt, ce qui est même nécessaire pour que les compilations dans le cloud
 Le **Play Store** coûte 25 $ (une seule fois) et l'**App Store** 99 $ par an :
 sans payer, on ne peut pas y être. Voici ce qui est gratuit.
 
-### Android : un fichier APK
+### Android : l'APK sur GitHub (le plus simple)
+
+À chaque envoi de code, GitHub compile l'APK tout seul et le publie dans
+l'onglet **Releases** du dépôt, sous le nom **Dernière version Android**.
+Pour l'installer : ouvre cette page sur un téléphone Android, touche le
+fichier `.apk`, puis autorise l'installation d'applications inconnues quand
+Android le demande. Une nouvelle version s'installe par-dessus l'ancienne,
+sans perdre la progression.
+
+- Compter environ 20 minutes par compilation. Elle se suit dans l'onglet
+  **Actions** (flux **APK Android**), d'où on peut aussi la relancer à la
+  main (**Run workflow**, si le flux est sur la branche principale).
+- Pour activer les duels **Par Internet** dans cet APK : dans le dépôt,
+  **Settings → Secrets and variables → Actions → onglet Variables**, ajoute
+  `EXPO_PUBLIC_FIREBASE_DATABASE_URL` et `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+  (les mêmes valeurs que dans `.env`), puis relance une compilation.
+- Cet APK est signé avec la clé de test d'Expo, commune à tous les projets :
+  parfait pour jouer entre amis, mais à remplacer par ta propre clé avant
+  une publication sur le Play Store.
+
+### Android : un APK compilé par Expo
 
 L'APK est l'application installable, que tu peux envoyer à qui tu veux. Elle
 est compilée gratuitement dans le cloud par Expo (compte gratuit, quelques
