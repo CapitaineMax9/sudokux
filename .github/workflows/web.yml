@@ -1,0 +1,61 @@
+# Publie la version web du jeu sur GitHub Pages, à l'adresse
+# https://capitainemax9.github.io/sudokux/ (à ouvrir dans Safari sur iPhone).
+# Une seule fois, dans le dépôt : Settings → Pages → Source : « GitHub Actions ».
+name: Site web
+
+on:
+  push:
+    branches:
+      - main
+      - claude/kind-goldberg-3u7but
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Construire le site
+        run: |
+          # Le site est servi dans le sous-dossier /sudokux/ : on l'indique au jeu.
+          node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('app.json'));c.expo.experiments={...(c.expo.experiments||{}),baseUrl:'/sudokux'};fs.writeFileSync('app.json',JSON.stringify(c,null,2));"
+          npx expo export --platform web --output-dir dist
+          # Pages renvoie 404.html pour les adresses inconnues : le jeu s'y charge aussi.
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+
+      - name: Préparer la publication
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publier
+        id: deployment
+        uses: actions/deploy-pages@v4

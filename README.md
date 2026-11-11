@@ -129,21 +129,16 @@ nouvelle version, augmente `version` et `android.versionCode` dans
 ### iPhone : la version web
 
 Apple ne permet pas d'installer gratuitement une application sur l'iPhone
-de quelqu'un d'autre. En revanche, le jeu fonctionne dans Safari, et on peut
-l'ajouter à l'écran d'accueil comme une app (bouton Partager → **Sur l'écran
-d'accueil**). Hébergement gratuit avec le même compte Expo :
+de quelqu'un d'autre. En revanche, le jeu fonctionne dans Safari :
 
-```bash
-npx expo export -p web
-```
+**https://capitainemax9.github.io/sudokux/**
 
-```bash
-npx eas-cli deploy --prod
-```
-
-Tu obtiens une adresse en `https://…expo.app` à partager. Dans le
-navigateur, les duels **Par Internet** fonctionnent ; le mode **À côté de
-toi** non.
+On peut l'ajouter à l'écran d'accueil comme une app (bouton Partager →
+**Sur l'écran d'accueil**). Le site est republié automatiquement à chaque
+envoi de code (flux **Site web** dans l'onglet Actions). Pour l'activer la
+première fois : dans le dépôt, **Settings → Pages → Source : GitHub
+Actions**. Dans le navigateur, les duels **Par Internet** fonctionnent ; le
+mode **À côté de toi** non.
 
 ### Plus tard, sur les magasins
 
