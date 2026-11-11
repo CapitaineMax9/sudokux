@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { useT } from '@/i18n';
-import { rankOf, rankProgress, useProgress } from '@/store/progress';
+import { CHAPTERS } from '@/content/story';
+import { useL, useT } from '@/i18n';
+import { isLevelUnlocked, rankOf, rankProgress, useProgress } from '@/store/progress';
 import { GlitchText } from '@/ui/GlitchText';
 import { LogoMark } from '@/ui/LogoMark';
 import { NeonButton } from '@/ui/NeonButton';
@@ -13,8 +14,15 @@ import { Txt } from '@/ui/Txt';
 export default function HomeScreen() {
   const router = useRouter();
   const t = useT();
+  const l = useL();
   const xp = useProgress((state) => state.xp);
   const freshPowers = useProgress((state) => state.freshPowers.length);
+  const levels = useProgress((state) => state.levels);
+  // Chapitre en cours : celui de la première mission débloquée qui reste à réussir.
+  const current =
+    [...CHAPTERS]
+      .reverse()
+      .find((chapter) => isLevelUnlocked(levels, chapter.levels[0].id)) ?? CHAPTERS[0];
   const rank = rankOf(xp);
 
   return (
@@ -51,7 +59,7 @@ export default function HomeScreen() {
         <NeonButton
           testID="menu-story"
           label={t('home.story')}
-          sub={t('home.storySub')}
+          sub={`${t('story.chapter', { n: current.number })} · ${l(current.title)}`}
           icon="story"
           size="lg"
           variant="solid"

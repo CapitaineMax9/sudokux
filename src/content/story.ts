@@ -10,49 +10,14 @@
  * Le joueur est X, « le dixième chiffre ». Chaque chapitre libère un fragment
  * dans un district, du Neuvième jusqu'au Premier.
  */
-import type { CountermeasureConfig } from '@/engine/match';
 import type { PowerId } from '@/engine/powers';
-import type { Difficulty, Variant } from '@/engine/sudoku';
 import type { L10n } from '@/i18n/strings';
 
+import { CHAPTER_2 } from './chapter2';
 import type { CharacterId } from './characters';
+import type { Chapter, StoryLevel, StoryLine } from './storyTypes';
 
-export interface StoryLine {
-  who: CharacterId;
-  text: L10n;
-}
-
-export type LevelKind = 'solo' | 'duel' | 'boss';
-
-export interface StoryLevel {
-  id: string;
-  number: number;
-  kind: LevelKind;
-  title: L10n;
-  brief: L10n;
-  /** Graine fixe : la mission propose toujours la même grille. */
-  seed: number;
-  puzzle: { difficulty: Difficulty; clues?: number; variant: Variant };
-  maxMistakes: number | null;
-  timeLimitMs: number | null;
-  countermeasures: CountermeasureConfig | null;
-  /** Adversaire (missions de duel), voir `bots.ts`. */
-  botId: string | null;
-  /** Temps à battre pour la troisième étoile (missions solo). */
-  parTimeMs: number;
-  /** Pouvoir débloqué à la première victoire. */
-  reward: PowerId | null;
-  intro: StoryLine[];
-  outro: StoryLine[];
-}
-
-export interface Chapter {
-  id: string;
-  number: number;
-  title: L10n;
-  subtitle: L10n;
-  levels: StoryLevel[];
-}
+export type { Chapter, LevelKind, StoryLevel, StoryLine } from './storyTypes';
 
 const MIN = 60_000;
 
@@ -646,15 +611,10 @@ export const CHAPTER_1: Chapter = {
   ],
 };
 
-export const CHAPTERS: Chapter[] = [CHAPTER_1];
+export const CHAPTERS: Chapter[] = [CHAPTER_1, CHAPTER_2];
 
 /** Les chapitres suivants, annoncés dans le jeu mais pas encore jouables. */
 export const UPCOMING_CHAPTERS: { number: number; title: L10n; subtitle: L10n }[] = [
-  {
-    number: 2,
-    title: { fr: 'Le Huitième', en: 'The Eighth' },
-    subtitle: { fr: 'Les docks de données', en: 'The data docks' },
-  },
   {
     number: 3,
     title: { fr: 'Le Septième', en: 'The Seventh' },
@@ -724,4 +684,9 @@ export function unlockMissionOf(power: PowerId): { chapter: number; number: numb
     if (level) return { chapter: chapter.number, number: level.number };
   }
   return null;
+}
+
+/** Chapitre auquel appartient une mission. */
+export function chapterOf(levelId: string): Chapter | undefined {
+  return CHAPTERS.find((chapter) => chapter.levels.some((level) => level.id === levelId));
 }

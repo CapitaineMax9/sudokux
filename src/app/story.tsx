@@ -230,12 +230,50 @@ export default function StoryScreen() {
   const router = useRouter();
   const t = useT();
   const l = useL();
+  const levels = useProgress((state) => state.levels);
+
+  // On ouvre le chapitre de la première mission qui reste à faire.
+  const [selected, setSelected] = useState(() => {
+    const index = CHAPTERS.findIndex((chapter) =>
+      chapter.levels.some((level) => (levels[level.id]?.stars ?? 0) === 0),
+    );
+    if (index < 0) return CHAPTERS.length - 1;
+    return isLevelUnlocked(levels, CHAPTERS[index].levels[0].id) ? index : Math.max(0, index - 1);
+  });
+  const chapter = CHAPTERS[selected];
 
   return (
     <Screen title={t('story.title')} onBack={() => router.back()} scroll tint={C.violet}>
-      {CHAPTERS.map((chapter) => (
-        <ChapterView key={chapter.id} chapter={chapter} />
-      ))}
+      <View style={styles.tabs}>
+        {CHAPTERS.map((item, index) => {
+          const active = index === selected;
+          const open = isLevelUnlocked(levels, item.levels[0].id);
+          const tint = active ? C.cyan : open ? C.textDim : C.textMuted;
+          return (
+            <Pressable
+              key={item.id}
+              testID={`chapter-${item.id}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => {
+                haptics.tap();
+                setSelected(index);
+              }}
+              style={[
+                styles.tab,
+                { borderColor: alpha(tint, active ? 1 : 0.3), backgroundColor: alpha(tint, active ? 0.14 : 0.04) },
+                active ? glow(C.cyan, 10, 0.4) : null,
+              ]}>
+              {open ? null : <Icon name="lock" size={13} color={tint} />}
+              <Txt variant="title" color={tint} size={12} numberOfLines={1}>
+                {item.number} · {l(item.title).toUpperCase()}
+              </Txt>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <ChapterView key={chapter.id} chapter={chapter} />
 
       <Txt variant="label" color={C.textMuted} size={10} style={styles.upcomingTitle}>
         {t('story.upcoming')}
@@ -263,6 +301,22 @@ export default function StoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  tabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 42,
+    paddingHorizontal: 6,
+    borderWidth: 1.5,
+    borderRadius: 6,
+  },
   chapter: {
     marginBottom: 8,
   },

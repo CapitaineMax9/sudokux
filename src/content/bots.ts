@@ -154,7 +154,94 @@ export const BOTS: Record<string, BotProfile> = {
       lose: [{ fr: 'Non, non, NON !', en: 'No, no, NO!' }],
     },
   },
+
+  twins: {
+    id: 'twins',
+    character: 'twins',
+    tier: 2,
+    unlockedBy: 'c2m3',
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'classic' },
+    config: {
+      id: 'twins',
+      cellMs: [7000, 9600],
+      mistakeChance: 0.06,
+      powers: ['siphon', 'freeze', 'shield'],
+      powerDelayMs: [10000, 16000],
+      shieldReflex: 0.4,
+      pace: { ratio: 1.05, minMs: 5000, maxMs: 16000 },
+      startDelayMs: 2500,
+    },
+    taunts: {
+      start: [{ fr: 'Rien à déclarer ?', en: 'Anything to declare?' }],
+      attack: [
+        { fr: 'Prélèvement à la source.', en: 'Deducted at the source.' },
+        { fr: 'Par ici la monnaie !', en: 'Hand it over!' },
+      ],
+      hit: [{ fr: 'Outrage à douanier !', en: 'Assaulting a customs officer!' }],
+      blocked: [{ fr: 'Refusé. Formulaire incomplet.', en: 'Denied. Incomplete form.' }],
+      lead: [{ fr: 'Vous êtes en retard de paiement.', en: 'Your payment is overdue.' }],
+      win: [{ fr: 'Le compte est bon.', en: 'The tally is correct.' }],
+      lose: [{ fr: 'On a été volés !', en: 'We were robbed!' }],
+    },
+  },
+
+  vesper2: {
+    id: 'vesper2',
+    character: 'vesper',
+    tier: 2,
+    unlockedBy: 'c2m6',
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'classic' },
+    config: {
+      id: 'vesper2',
+      cellMs: [6600, 9000],
+      mistakeChance: 0.04,
+      powers: ['freeze', 'glitch', 'mirror', 'purge'],
+      powerDelayMs: [11000, 17000],
+      shieldReflex: 0.5,
+      pace: { ratio: 1.05, minMs: 4800, maxMs: 16000 },
+      startDelayMs: 2500,
+    },
+    taunts: {
+      start: [{ fr: 'Montrez-moi.', en: 'Show me.' }],
+      attack: [{ fr: 'Tenez bon.', en: 'Hold on.' }],
+      hit: [{ fr: 'Mieux.', en: 'Better.' }],
+      blocked: [{ fr: 'Regardez avant de frapper.', en: 'Look before you strike.' }],
+      lead: [{ fr: 'Huit sera plus rapide que moi.', en: 'Eight will be faster than me.' }],
+      win: [{ fr: 'Pas encore prêts.', en: 'Not ready yet.' }],
+      lose: [{ fr: 'Elle avait raison.', en: 'She was right.' }],
+    },
+  },
+
+  huit: {
+    id: 'huit',
+    character: 'huit',
+    tier: 3,
+    unlockedBy: 'c2m8',
+    puzzle: { difficulty: 'easy', clues: 44, variant: 'x' },
+    config: {
+      id: 'huit',
+      cellMs: [6200, 8600],
+      mistakeChance: 0.03,
+      powers: ['siphon', 'flip', 'blackout', 'mirror', 'purge'],
+      powerDelayMs: [9000, 14000],
+      shieldReflex: 0.5,
+      pace: { ratio: 1.03, minMs: 4200, maxMs: 15500 },
+      startDelayMs: 2500,
+    },
+    taunts: {
+      start: [{ fr: 'Voyons ce que vous valez.', en: 'Let us see what you are worth.' }],
+      attack: [
+        { fr: 'Merci pour votre contribution.', en: 'Thank you for your contribution.' },
+        { fr: 'Comptez bien, tout bascule.', en: 'Count carefully, it is all tipping over.' },
+      ],
+      hit: [{ fr: 'Ça, je le mets sur votre note.', en: 'That goes on your tab.' }],
+      blocked: [{ fr: 'Retour à l’envoyeur, avec intérêts.', en: 'Return to sender, with interest.' }],
+      lead: [{ fr: 'Votre cours est en baisse.', en: 'Your stock is falling.' }],
+      win: [{ fr: 'Affaire conclue.', en: 'Deal closed.' }],
+      lose: [{ fr: 'Bilan négatif…', en: 'A net loss…' }],
+    },
+  },
 };
 
 /** Ordre d'affichage dans le menu Duel. */
-export const BOT_ORDER = ['drone', 'pixel', 'vesper', 'neuf'] as const;
+export const BOT_ORDER = ['drone', 'pixel', 'vesper', 'neuf', 'twins', 'huit'] as const;

@@ -206,6 +206,70 @@ export const Portrait = memo(function Portrait({
       );
       break;
 
+    case 'kilo':
+      figure = (
+        <>
+          {/* Casque de chantier */}
+          <Path d="M24 36c0-16 12-24 26-24s26 8 26 24z" {...line} {...soft} fillOpacity={0.35} />
+          <Path d="M18 36h64" {...line} strokeWidth={3.5} />
+          <Path d="M50 12v24" {...line} strokeOpacity={0.5} />
+          {/* Large visage carré */}
+          <Path d="M27 37v16c0 12 10 20 23 20s23-8 23-20V37" {...line} {...soft} />
+          <Circle cx={41} cy={50} r={2.6} fill={color} />
+          <Circle cx={59} cy={50} r={2.6} fill={color} />
+          <Path d="M40 61q10 7 20 0" {...line} />
+          {/* Épaules de docker */}
+          <Path d="M0 100c2-16 20-24 50-24s48 8 50 24z" {...line} {...soft} />
+          <Path d="M36 78l6 22M64 78l-6 22" {...line} strokeOpacity={0.5} />
+        </>
+      );
+      break;
+
+    case 'twins':
+      figure = (
+        <>
+          {/* Pair, à gauche : casquette droite */}
+          <Circle cx={33} cy={46} r={15} {...line} {...soft} />
+          <Path d="M17 38h32l-3-9H20z" {...line} {...soft} fillOpacity={0.35} />
+          <Path d="M27 47h4M36 47h4" {...line} />
+          <Path d="M28 55h10" {...line} />
+          {/* Impair, à droite : casquette de travers */}
+          <Circle cx={67} cy={46} r={15} {...line} {...soft} />
+          <Path d="M52 41l31-9-1 9-27 6z" {...line} {...soft} fillOpacity={0.35} />
+          <Path d="M61 47l4 2M70 49l4-2" {...line} />
+          <Path d="M62 57q5-4 10 0" {...line} />
+          {/* Uniformes */}
+          <Path d="M8 100c1-18 10-28 25-28s20 8 22 28z" {...line} {...soft} />
+          <Path d="M45 100c2-20 8-28 22-28s24 10 25 28z" {...line} {...soft} />
+          <Circle cx={33} cy={86} r={3} fill={color} />
+          <Circle cx={67} cy={86} r={3} fill={color} />
+        </>
+      );
+      break;
+
+    case 'huit':
+      figure = (
+        <>
+          {/* Deux chignons superposés : un 8 */}
+          <Circle cx={50} cy={11} r={7} {...line} {...soft} fillOpacity={0.4} />
+          <Circle cx={50} cy={25} r={9} {...line} {...soft} fillOpacity={0.4} />
+          <Path d="M30 52c0-13 9-21 20-21s20 8 20 21c0 14-9 24-20 26-11-2-20-12-20-26z" {...line} {...soft} />
+          <Path d="M30 48c4-9 12-13 20-13s16 4 20 13" {...line} />
+          {/* Regard mi-clos, sourire en coin */}
+          <Path d="M38 51h8M54 51h8" {...line} />
+          <Path d="M44 63q7 4 13-2" {...line} />
+          {/* Boucles d'oreilles en forme de pièces */}
+          <Circle cx={27} cy={62} r={3} {...line} />
+          <Circle cx={73} cy={62} r={3} {...line} />
+          {/* Col haut */}
+          <Path d="M10 100c2-14 16-20 28-22l12 10 12-10c12 2 26 8 28 22z" {...line} {...soft} />
+          <SvgText x={50} y={97} fontSize={10} fontWeight="bold" fill={color} textAnchor="middle">
+            8
+          </SvgText>
+        </>
+      );
+      break;
+
     case 'drone':
       figure = (
         <>

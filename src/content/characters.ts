@@ -12,6 +12,9 @@ export type CharacterId =
   | 'vesper'
   | 'neuf'
   | 'un'
+  | 'kilo'
+  | 'twins'
+  | 'huit'
   | 'drone'
   | 'system';
 
@@ -65,6 +68,24 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     name: { fr: 'Numéro Un', en: 'Number One' },
     role: { fr: 'Premier des Chiffres', en: 'First of the Digits' },
     color: '#f4f1de',
+  },
+  kilo: {
+    id: 'kilo',
+    name: { fr: 'Kilo', en: 'Kilo' },
+    role: { fr: 'Grutier des docks', en: 'Dock crane operator' },
+    color: '#2ee6c8',
+  },
+  twins: {
+    id: 'twins',
+    name: { fr: 'Pair & Impair', en: 'Even & Odd' },
+    role: { fr: 'Jumeaux de la douane', en: 'The customs twins' },
+    color: '#d4ff3a',
+  },
+  huit: {
+    id: 'huit',
+    name: { fr: 'Directrice Huit', en: 'Director Eight' },
+    role: { fr: 'Chiffre du District 8', en: 'Digit of District 8' },
+    color: '#ffd166',
   },
   drone: {
     id: 'drone',
